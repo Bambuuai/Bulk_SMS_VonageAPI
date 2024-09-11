@@ -1,0 +1,12 @@
+venv/
+__pycache__
+.idea
+
+.vscode
+.env
+.former.env
+*.log
+private.key
+private2.key
+former.private.key
+*.state.*
