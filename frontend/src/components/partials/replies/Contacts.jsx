@@ -1,6 +1,6 @@
 import React from "react";
 import { useSelector, useDispatch } from "react-redux";
-import { openChat, toggleActiveChat } from "./store";
+import {openChat, closeChat} from "./store";
 import axios from "@/configs/axios-config";
 import { USER_ENDPOINTS } from "@/constant/endpoints";
 
@@ -18,12 +18,12 @@ const Contacts = ({ campaignId, contact }) => {
   const dispatch = useDispatch();
 
   function loadMessages() {
-    dispatch(toggleActiveChat(true))
+    dispatch(closeChat({ activeChat: contact.info.phone_number }))
     axios.get(USER_ENDPOINTS.GET_CHAT + `/${campaignId}` + `/${contact.info.phone_number}`).then(({ data }) => {
       dispatch(
         openChat({
           contact,
-          activechat: true,
+          activeChat: contact.info.phone_number,
           messages: data
         })
       );

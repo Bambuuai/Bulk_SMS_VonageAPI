@@ -1,137 +1,142 @@
 "use client";
-import dynamic from "next/dynamic";
-import React, { useState } from "react";
+
 import Card from "@/components/ui/Card";
-import ImageBlock1 from "@/components/partials/widget/block/image-block-1";
-import GroupChart1 from "@/components/partials/widget/chart/group-chart-1";
-import RevenueBarChart from "@/components/partials/widget/chart/revenue-bar-chart";
-import RadialsChart from "@/components/partials/widget/chart/radials";
+import Icon from "@/components/ui/Icon";
+import GroupChart4 from "@/components/partials/widget/chart/group-chart-4";
+import DonutChart from "@/components/partials/widget/chart/donut-chart";
+import DoubleAreaChart from "@/components/partials/chart/appex-chart/AreaSpaline";
 import SelectMonth from "@/components/partials/SelectMonth";
-import CompanyTable from "@/components/partials/table/company-table";
-import RecentActivity from "@/components/partials/widget/recent-activity";
-import RadarChart from "@/components/partials/widget/chart/radar-chart";
+import TaskLists from "@/components/partials/widget/task-list";
+import MessageList from "@/components/partials/widget/message-list";
+import TrackingParcel from "@/components/partials/widget/activity";
+import TeamTable from "@/components/partials/table/team-table";
+import { meets, files } from "@/constant/data";
+import CalendarView from "@/components/partials/widget/CalendarView";
 import HomeBredCurbs from "@/components/partials/HomeBredCurbs";
+import {useEffect, useState} from "react";
+import { USER_ENDPOINTS} from "@/constant/endpoints";
+import axios from "@/configs/axios-config"
 
-const MostSales = dynamic(
-  () => import("@/components/partials/widget/most-sales"),
-  {
-    ssr: false,
-  }
-);
-const Dashboard = () => {
-  const [filterMap, setFilterMap] = useState("usa");
+const UserDashboard = () => {
+  const [contactsReport, setContactsReport] = useState(null);
+  const [campaignReport, setCampaignReport] = useState(null);
+  const [messageReport, setMessageReport] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dataCards, setDataCards] = useState([]);
+  const [months, setMonths] = useState([]);
+  const [msgTypeChart, setMsgTypeChart] = useState([])
+
+  useEffect(() => {
+      axios.get(USER_ENDPOINTS.GET_CONTACTS_REPORT).then(({data}) => {
+        if (data.success) {
+          setContactsReport(data.data)
+        }
+      })
+
+      axios.get(USER_ENDPOINTS.GET_CAMPAIGNS_REPORT).then(({data}) => {
+        if (data.success) {
+          setCampaignReport(data.data)
+        }
+      })
+
+      axios.get(USER_ENDPOINTS.GET_MESSAGES_REPORT).then(({data}) => {
+        if (data.success) {
+          setMessageReport(data.data)
+        }
+      })
+
+      axios.get(USER_ENDPOINTS.GET_MESSAGE_STATUS_REPORT).then(({data}) => {
+        if (data.success) {
+            setMonths(data.months)
+            // setMsgTypeChart(data.messages)
+            setMsgTypeChart([{name: "Sent Messages", data: data.messages}, {name: "Replies", data: data.replies}])
+        }
+      })
+  }, []);
+
   return (
-    <div>
-      <HomeBredCurbs title="User Dashboard" />
-      <div className="grid grid-cols-12 gap-5 mb-5">
-        <div className="2xl:col-span-3 lg:col-span-4 col-span-12">
-          <ImageBlock1 />
-        </div>
-        <div className="2xl:col-span-9 lg:col-span-8 col-span-12">
-          <Card bodyClass="p-4">
-            <div className="grid md:grid-cols-3 col-span-1 gap-4">
-              <GroupChart1 />
-            </div>
-          </Card>
-        </div>
-      </div>
-      <div className="grid grid-cols-12 gap-5">
-        <div className="lg:col-span-8 col-span-12">
-          <Card>
-            <div className="legend-ring">
-              <RevenueBarChart />
-            </div>
-          </Card>
-        </div>
-        <div className="lg:col-span-4 col-span-12">
-          <Card title="Reply Info" headerslot={<SelectMonth />}>
-            <RadialsChart />
-          </Card>
-        </div>
-        <div className="lg:col-span-8 col-span-12">
-          <Card title="All Company" headerslot={<SelectMonth />} noborder>
-            <CompanyTable />
-          </Card>
-        </div>
-        <div className="lg:col-span-4 col-span-12">
-          <Card title="Recent Activity" headerslot={<SelectMonth />}>
-            <RecentActivity />
-          </Card>
-        </div>
-        <div className="lg:col-span-8 col-span-12">
-          <Card
-            title="Most Sales"
-            headerslot={
-              <div className="border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded p-1 flex items-center">
-                <span
-                  className={` flex-1 text-sm font-normal px-3 py-1 transition-all duration-150 rounded cursor-pointer
-                ${
-                  filterMap === "global"
-                    ? "bg-slate-900 text-white dark:bg-slate-700 dark:text-slate-300"
-                    : "dark:text-slate-300"
-                }  
-                `}
-                  onClick={() => setFilterMap("global")}
-                >
-                  Global
-                </span>
-                <span
-                  className={` flex-1 text-sm font-normal px-3 py-1 rounded transition-all duration-150 cursor-pointer
-                  ${
-                    filterMap === "usa"
-                      ? "bg-slate-900 text-white dark:bg-slate-700 dark:text-slate-300"
-                      : "dark:text-slate-300"
-                  }
-              `}
-                  onClick={() => setFilterMap("usa")}
-                >
-                  USA
-                </span>
-              </div>
-            }
-          >
-            <MostSales filterMap={filterMap} />
-          </Card>
-        </div>
-        <div className="lg:col-span-4 col-span-12">
-          <Card title="Overview" headerslot={<SelectMonth />}>
-            <RadarChart />
-            <div className="bg-slate-50 dark:bg-slate-900 rounded p-4 mt-8 flex justify-between flex-wrap">
-              <div className="space-y-1">
-                <h4 className="text-slate-600 dark:text-slate-200 text-xs font-normal">
-                  Invested amount
-                </h4>
-                <div className="text-sm font-medium text-slate-900 dark:text-white">
-                  $8264.35
+      <div className="space-y-5">
+        <HomeBredCurbs title="User Dashboard" />
+        <div className="grid grid-cols-12 gap-5">
+          <div className="lg:col-span-12 col-span-12 space-y-5"> {/*  span-8 */}
+            <Card>
+              <div className="grid grid-cols-12 gap-5">
+                <div className="xl:col-span-12 col-span-12">  {/*  span-8 */}
+                  <div className="grid lg:grid-cols-7 md:grid-cols-4 sm:grid-cols-2 grid-cols-1 gap-3">  {/*  md:grid-cols-4 */}
+                    <GroupChart4 isLoading={isLoading} contactsReport={contactsReport} campaignsReport={campaignReport} messagesReport={messageReport} />
+                  </div>
                 </div>
-                <div className="text-slate-500 dark:text-slate-300 text-xs font-normal">
-                  +0.001.23 (0.2%)
-                </div>
-              </div>
 
-              <div className="space-y-1">
-                <h4 className="text-slate-600 dark:text-slate-200 text-xs font-normal">
-                  Invested amount
-                </h4>
-                <div className="text-sm font-medium text-slate-900 dark:text-white">
-                  $8264.35
-                </div>
+                {/*<div className="xl:col-span-4 col-span-12">*/}
+                {/*  <div className="bg-slate-50 dark:bg-slate-900 rounded-md p-4">*/}
+                {/*  <span className="block dark:text-slate-400 text-sm text-slate-600">*/}
+                {/*    Progress*/}
+                {/*  </span>*/}
+                {/*    <DonutChart />*/}
+                {/*  </div>*/}
+                {/*</div>*/}
               </div>
-
-              <div className="space-y-1">
-                <h4 className="text-slate-600 dark:text-slate-200 text-xs font-normal">
-                  Invested amount
-                </h4>
-                <div className="text-sm font-medium text-slate-900 dark:text-white">
-                  $8264.35
-                </div>
-              </div>
-            </div>
-          </Card>
+            </Card>
+            <Card title="Monthly Message Activity Overview" headerslot={<SelectMonth />}>
+              <DoubleAreaChart height={310} months={months} series={msgTypeChart} />
+            </Card>
+          </div>
+          {/*<div className="lg:col-span-4 col-span-12 space-y-5">*/}
+          {/*  <Card title="Notes">*/}
+          {/*    <div className="mb-12">*/}
+          {/*      <CalendarView />*/}
+          {/*    </div>*/}
+          {/*    <ul className="divide-y divide-slate-100 dark:divide-slate-700">*/}
+          {/*      {meets.map((item, i) => (*/}
+          {/*          <li key={i} className="block py-[10px]">*/}
+          {/*            <div className="flex space-x-2 rtl:space-x-reverse">*/}
+          {/*              <div className="flex-1 flex space-x-2 rtl:space-x-reverse">*/}
+          {/*                <div className="flex-none">*/}
+          {/*                  <div className="h-8 w-8">*/}
+          {/*                    <img*/}
+          {/*                        src={item.img}*/}
+          {/*                        alt=""*/}
+          {/*                        className="block w-full h-full object-cover rounded-full border hover:border-white border-transparent"*/}
+          {/*                    />*/}
+          {/*                  </div>*/}
+          {/*                </div>*/}
+          {/*                <div className="flex-1">*/}
+          {/*              <span className="block text-slate-600 text-sm dark:text-slate-300 mb-1 font-medium">*/}
+          {/*                {item.title}*/}
+          {/*              </span>*/}
+          {/*                  <span className="flex font-normal text-xs dark:text-slate-400 text-slate-500">*/}
+          {/*                <span className="text-base inline-block mr-1">*/}
+          {/*                  <Icon icon="heroicons-outline:video-camera" />*/}
+          {/*                </span>*/}
+          {/*                    {item.meet}*/}
+          {/*              </span>*/}
+          {/*                </div>*/}
+          {/*              </div>*/}
+          {/*              <div className="flex-none">*/}
+          {/*            <span className="block text-xs text-slate-600 dark:text-slate-400">*/}
+          {/*              {item.date}*/}
+          {/*            </span>*/}
+          {/*              </div>*/}
+          {/*            </div>*/}
+          {/*          </li>*/}
+          {/*      ))}*/}
+          {/*    </ul>*/}
+          {/*  </Card>*/}
+          {/*  <Card title="Activity" headerslot={<SelectMonth />}>*/}
+          {/*    <TrackingParcel />*/}
+          {/*  </Card>*/}
+          {/*</div>*/}
         </div>
+        {/*<div className="grid xl:grid-cols-3 grid-cols-1 gap-5">*/}
+        {/*  <Card title="Task list" headerslot={<SelectMonth />}>*/}
+        {/*    <TaskLists />*/}
+        {/*  </Card>*/}
+        {/*  <Card title="Messages" headerslot={<SelectMonth />}>*/}
+        {/*    <MessageList />*/}
+        {/*  </Card>*/}
+        {/*</div>*/}
       </div>
-    </div>
   );
 };
 
-export default Dashboard;
+export default UserDashboard;

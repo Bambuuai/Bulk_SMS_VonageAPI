@@ -1,243 +1,100 @@
 import React from "react";
 import dynamic from "next/dynamic";
+import Icon from "@/components/ui/Icon";
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
-const shapeLine1 = {
-  series: [
-    {
-      data: [800, 600, 1000, 800, 600, 1000, 800, 900],
-    },
-  ],
-  options: {
-    chart: {
-      toolbar: {
-        autoSelected: "pan",
-        show: false,
-      },
-      offsetX: 0,
-      offsetY: 0,
-      zoom: {
-        enabled: false,
-      },
-      sparkline: {
-        enabled: true,
-      },
-    },
-    dataLabels: {
-      enabled: false,
-    },
-    stroke: {
-      curve: "smooth",
-      width: 2,
-    },
-    colors: ["#00EBFF"],
-    tooltip: {
-      theme: "light",
-    },
-    grid: {
-      show: false,
-      padding: {
-        left: 0,
-        right: 0,
-      },
-    },
-    yaxis: {
-      show: false,
-    },
-    fill: {
-      type: "solid",
-      opacity: [0.1],
-    },
-    legend: {
-      show: false,
-    },
-    xaxis: {
-      low: 0,
-      offsetX: 0,
-      offsetY: 0,
-      show: false,
-      labels: {
-        low: 0,
-        offsetX: 0,
-        show: false,
-      },
-      axisBorder: {
-        low: 0,
-        offsetX: 0,
-        show: false,
-      },
-    },
-  },
-};
-const shapeLine2 = {
-  series: [
-    {
-      data: [800, 600, 1000, 800, 600, 1000, 800, 900],
-    },
-  ],
-  options: {
-    chart: {
-      toolbar: {
-        autoSelected: "pan",
-        show: false,
-      },
-      offsetX: 0,
-      offsetY: 0,
-      zoom: {
-        enabled: false,
-      },
-      sparkline: {
-        enabled: true,
-      },
-    },
-    dataLabels: {
-      enabled: false,
-    },
-    stroke: {
-      curve: "smooth",
-      width: 2,
-    },
-    colors: ["#FB8F65"],
-    tooltip: {
-      theme: "light",
-    },
-    grid: {
-      show: false,
-      padding: {
-        left: 0,
-        right: 0,
-      },
-    },
-    yaxis: {
-      show: false,
-    },
-    fill: {
-      type: "solid",
-      opacity: [0.1],
-    },
-    legend: {
-      show: false,
-    },
-    xaxis: {
-      low: 0,
-      offsetX: 0,
-      offsetY: 0,
-      show: false,
-      labels: {
-        low: 0,
-        offsetX: 0,
-        show: false,
-      },
-      axisBorder: {
-        low: 0,
-        offsetX: 0,
-        show: false,
-      },
-    },
-  },
-};
-const shapeLine3 = {
-  series: [
-    {
-      data: [800, 600, 1000, 800, 600, 1000, 800, 900],
-    },
-  ],
-  options: {
-    chart: {
-      toolbar: {
-        autoSelected: "pan",
-        show: false,
-      },
-      offsetX: 0,
-      offsetY: 0,
-      zoom: {
-        enabled: false,
-      },
-      sparkline: {
-        enabled: true,
-      },
-    },
-    dataLabels: {
-      enabled: false,
-    },
-    stroke: {
-      curve: "smooth",
-      width: 2,
-    },
-    colors: ["#5743BE"],
-    tooltip: {
-      theme: "light",
-    },
-    grid: {
-      show: false,
-      padding: {
-        left: 0,
-        right: 0,
-      },
-    },
-    yaxis: {
-      show: false,
-    },
-    fill: {
-      type: "solid",
-      opacity: [0.1],
-    },
-    legend: {
-      show: false,
-    },
-    xaxis: {
-      low: 0,
-      offsetX: 0,
-      offsetY: 0,
-      show: false,
-      labels: {
-        low: 0,
-        offsetX: 0,
-        show: false,
-      },
-      axisBorder: {
-        low: 0,
-        offsetX: 0,
-        show: false,
-      },
-    },
-  },
-};
 
-const statistics = [
+// const statistics = [
+//   {
+//     name: shapeLine1,
+//     title: "Users",
+//     count: "0",
+//     bg: "bg-[#E5F9FF] dark:bg-slate-900	",
+//   },
+//   {
+//     name: shapeLine2,
+//     title: "Campaigns",
+//     count: "0",
+//     bg: "bg-[#FFEDE5] dark:bg-slate-900	",
+//   },
+//   {
+//     name: shapeLine3,
+//     title: "SMS Delivery Rate",
+//     count: "0.0%",
+//     bg: "bg-[#EAE5FF] dark:bg-slate-900	",
+//   },
+// ];
+const GroupChart1 = ({ isLoading, usersReport, contactsReport, campaignReport, messageReport }) => {
+  const statistics = [
   {
-    name: shapeLine1,
+    name: "fluent:",
     title: "Users",
-    count: "0",
+    count: usersReport?.total_users,
     bg: "bg-[#E5F9FF] dark:bg-slate-900	",
   },
   {
-    name: shapeLine2,
-    title: "Campaigns",
-    count: "0",
+    name: "fluent:",
+    title: "Phone Numbers",
+    count: usersReport?.assigned_numbers + usersReport?.unassigned_numbers,
     bg: "bg-[#FFEDE5] dark:bg-slate-900	",
   },
-  {
-    name: shapeLine3,
-    title: "SMS Delivery Rate",
-    count: "0.0%",
-    bg: "bg-[#EAE5FF] dark:bg-slate-900	",
-  },
+    {
+      name: "fluent:",
+      title: "Contacts",
+      count: contactsReport?.total_contacts,
+      bg: "bg-[#E5F9FF] dark:bg-slate-900	",
+    },
+    {
+      name: "fluent:",
+      title: "DNC",
+      count: contactsReport?.total_user_dnc + contactsReport?.total_admin_dnc,
+      bg: "bg-[#E5F9FF] dark:bg-slate-900	",
+    },
+    {
+      name: "fluent:",
+      title: "Campaigns in Queue",
+      count: campaignReport?.total_queues,
+      bg: "bg-[#E5F9FF] dark:bg-slate-900	",
+    },
+    {
+      name: "fluent:",
+      title: "Campaigns Completed",
+      count: campaignReport?.status_counts?.completed,
+      bg: "bg-[#E5F9FF] dark:bg-slate-900	",
+    },
+    {
+      name: "fluent:",
+      title: "Campaigns Scheduled",
+      count: campaignReport?.status_counts?.scheduled,
+      bg: "bg-[#E5F9FF] dark:bg-slate-900	",
+    },
+    {
+      name: "fluent:",
+      title: "Messages Sent",
+      count: messageReport?.total_sent_messages,
+      bg: "bg-[#E5F9FF] dark:bg-slate-900	",
+    },
+    {
+      name: "fluent:",
+      title: "Replies Received",
+      count: messageReport?.total_replied_messages,
+      bg: "bg-[#E5F9FF] dark:bg-slate-900	",
+    },
+  // {
+  //   name: "fluent:",
+  //   title: "SMS Delivery Rate",
+  //   count: "0.0%",
+  //   bg: "bg-[#EAE5FF] dark:bg-slate-900	",
+  // },
 ];
-const GroupChart1 = () => {
+
   return (
     <>
       {statistics.map((item, i) => (
         <div className={`py-[18px] px-4 rounded-[6px] ${item.bg}`} key={i}>
           <div className="flex items-center space-x-6 rtl:space-x-reverse">
             <div className="flex-none">
-              <Chart
-                options={item.name.options}
-                series={item.name.series}
-                type="area"
-                height={48}
-                width={48}
-              />
+              <Icon icon={item.name} />
             </div>
             <div className="flex-1">
               <div className="text-slate-800 dark:text-slate-300 text-sm mb-1 font-medium">

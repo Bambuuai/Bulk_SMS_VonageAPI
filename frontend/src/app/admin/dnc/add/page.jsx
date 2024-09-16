@@ -13,7 +13,8 @@ import { ADMIN_ENDPOINTS } from "@/constant/endpoints"
 import notify from "@/app/notify";
 import { useState } from "react";
 import DropZone from "@/components/partials/froms/DropZone";
-import { handleApiErr } from "@/utils"
+import { parsePhoneNumber, isValidPhoneNumber } from "libphonenumber-js";
+import {formatToVonage, verifyNumbers} from "@/utils";
 
 // const schema = yup
 //   .object({
@@ -24,7 +25,7 @@ import { handleApiErr } from "@/utils"
 const AddDNCs = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingFile, setLoadingFile] = useState(false);
-  const { register, control, handleSubmit, reset, trigger, setError } = useForm({
+  const { register, control, handleSubmit, reset, trigger, setError, formState: { errors } } = useForm({
     defaultValues: {
         dnc: [{reason: "", phone_number: ""}]
     },
@@ -55,7 +56,14 @@ const AddDNCs = () => {
   
   function onSubmit(data) {
     setIsLoading(true)
-    axios.post(ADMIN_ENDPOINTS.ADD_DNC, data.dnc).then(response => {
+      const hasErrors = verifyNumbers(data.dnc, setError, "dnc")
+      if (hasErrors) {
+          setIsLoading(false)
+          return;
+      }
+      const apiDnc = formatToVonage(data.dnc)
+
+    axios.post(ADMIN_ENDPOINTS.ADD_DNC, apiDnc).then(response => {
         if (Array.isArray(response.data)) {
             notify.success("DNCs Added Successfully")
             reset()
@@ -105,6 +113,7 @@ const AddDNCs = () => {
                         placeholder="+2349110347359"
                         register={register}
                         name={`dnc[${index}].phone_number`}
+                        error={errors?.dnc?.[index]?.phone_number}
                         disabled={isLoading}
                         required
                     />

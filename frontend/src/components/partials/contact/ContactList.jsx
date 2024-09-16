@@ -15,6 +15,7 @@ import {
   usePagination,
 } from "react-table";
 import { selectableGroups } from "@/utils"
+import {formatToDisplay} from "@/utils";
 
 
 const ContactList = ({ group, contacts, setContactEdit, deleteContact, deleting }) => {
@@ -42,7 +43,7 @@ const ContactList = ({ group, contacts, setContactEdit, deleteContact, deleting 
       Header: "Phone Number",
       accessor: "phone_number",
       Cell: (row) => {
-        return <span>{row?.cell?.value}</span>;
+        return <span>{formatToDisplay(row?.cell?.value)}</span>;
       },
     },
     {

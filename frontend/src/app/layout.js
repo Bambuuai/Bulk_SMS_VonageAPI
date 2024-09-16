@@ -1,4 +1,5 @@
 "use client";
+
 import "react-toastify/dist/ReactToastify.css";
 import "simplebar-react/dist/simplebar.min.css";
 import "flatpickr/dist/themes/light.css";
@@ -8,10 +9,9 @@ import "./scss/app.scss";
 
 import { Provider } from "react-redux";
 import store from "../store";
-import { Inter } from "next/font/google";
 import RouteValidator from "./RouteValidator"
-import useRtl from "@/hooks/useRtl";
 import { ToastContainer } from "react-toastify";
+import { Inter } from "next/font/google";
 
 export const inter = Inter({ subsets: ["latin"] });
 

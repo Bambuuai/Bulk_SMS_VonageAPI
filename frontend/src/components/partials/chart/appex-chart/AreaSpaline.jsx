@@ -7,16 +7,16 @@ const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 
 import useDarkMode from "@/hooks/useDarkMode";
 
-const AreaSpaLine = () => {
+const AreaSpaLine = ({ height, series, months }) => {
   const [isDark] = useDarkMode();
-  const series = [
-    {
-      data: [31, 40, 28, 51, 42, 109, 100],
-    },
-    {
-      data: [11, 32, 45, 32, 34, 52, 41],
-    },
-  ];
+  // const series = [
+  //   {
+  //     data: [31, 40, 28, 51, 42, 109, 100],
+  //   },
+  //   {
+  //     data: [11, 32, 45, 32, 34, 52, 41],
+  //   },
+  // ];
   const options = {
     chart: {
       toolbar: {
@@ -45,16 +45,9 @@ const AreaSpaLine = () => {
       position: "back",
     },
     xaxis: {
-      type: "datetime",
-      categories: [
-        "2018-09-19T00:00:00.000Z",
-        "2018-09-19T01:30:00.000Z",
-        "2018-09-19T02:30:00.000Z",
-        "2018-09-19T03:30:00.000Z",
-        "2018-09-19T04:30:00.000Z",
-        "2018-09-19T05:30:00.000Z",
-        "2018-09-19T06:30:00.000Z",
-      ],
+      type: "string",
+      // categories: [ "2018-09-19T00:00:00.000Z", "2018-09-19T01:30:00.000Z", "2018-09-19T02:30:00.000Z", "2018-09-19T03:30:00.000Z", "2018-09-19T04:30:00.000Z", "2018-09-19T05:30:00.000Z", "2018-09-19T06:30:00.000Z",],
+      categories: months,
       labels: {
         style: {
           colors: isDark ? "#CBD5E1" : "#475569",
@@ -82,7 +75,7 @@ const AreaSpaLine = () => {
   };
   return (
     <div>
-      <Chart options={options} series={series} type="area" height={350} />
+      <Chart options={options} series={series} type="area" height={height} />
     </div>
   );
 };

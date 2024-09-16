@@ -7,8 +7,8 @@ export const appChatSlice = createSlice({
   name: "appchat",
   initialState: {
     openProfile: false,
-    openinfo: true,
-    activechat: false,
+    openInfo: true,
+    activeChat: false,
     searchContact: "",
     mobileChatSidebar: false,
     profileinfo: {},
@@ -19,10 +19,20 @@ export const appChatSlice = createSlice({
   },
   reducers: {
     openChat: (state, action) => {
-      state.activechat = action.payload.activechat;
+      state.activeChat = action.payload.activeChat;
       state.mobileChatSidebar = !state.mobileChatSidebar;
       state.user = action.payload.contact.info;
       state.messFeed = action.payload.messages
+      // state.chats.map((item) => {
+      //   if (item.userId === action.payload.contact.id) {
+      //     state.messFeed = item.messages;
+      //   }
+      // });
+    },
+    closeChat: (state, action) => {
+      state.activeChat = action.payload?.activeChat ?? "";
+      state.user = {};
+      state.messFeed = []
       // state.chats.map((item) => {
       //   if (item.userId === action.payload.contact.id) {
       //     state.messFeed = item.messages;
@@ -34,8 +44,15 @@ export const appChatSlice = createSlice({
       state.mobileChatSidebar = action.payload;
     },
     infoToggle: (state, action) => {
-      state.openinfo = action.payload;
+      state.openInfo = action.payload;
     },
+    // clearFeed: (state, action) => {
+    //   console.log("Clearing feed")
+    //   state.messFeed = action.payload ?? [];
+    // },
+    // clearInfo: (state, action) => {
+    //   state.user = {}
+    // },
     sendMessage: (state, action) => {
       state.messFeed.push(action.payload);
     },
@@ -46,7 +63,7 @@ export const appChatSlice = createSlice({
       state.searchContact = action.payload;
     },
     toggleActiveChat: (state, action) => {
-      state.activechat = action.payload;
+      state.activeChat = action.payload;
     },
     setContacts: (state, action) => {
       state.contacts = action.payload
@@ -59,6 +76,7 @@ export const appChatSlice = createSlice({
 
 export const {
   openChat,
+  closeChat,
   toggleMobileChatSidebar,
   infoToggle,
   sendMessage,

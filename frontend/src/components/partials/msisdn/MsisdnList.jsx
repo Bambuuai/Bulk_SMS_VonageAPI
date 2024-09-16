@@ -16,6 +16,8 @@ import {
 } from "react-table";
 import { selectableGroups } from "@/utils"
 import Button from "@/components/ui/Button";
+import { parsePhoneNumberWithError } from "libphonenumber-js"
+import {formatToDisplay} from "@/utils";
 
 
 const MsisdnList = ({ msisdns, buyNumber, editNumber, operating, isPurchase, actions }) => {
@@ -30,7 +32,7 @@ const MsisdnList = ({ msisdns, buyNumber, editNumber, operating, isPurchase, act
         return (
           <div className="flex space-x-3 items-center text-left rtl:space-x-reverse">
             <div className="flex-1 font-medium text-sm leading-4 whitespace-nowrap">
-                {row?.cell?.value}
+                {formatToDisplay(row?.cell?.value)}
             </div>
           </div>
         );
@@ -70,18 +72,27 @@ const MsisdnList = ({ msisdns, buyNumber, editNumber, operating, isPurchase, act
       },
     },
     {
-      Header: isPurchase ? "Cost" : "Users Linked",
-      accessor: isPurchase ? "cost" : "users",
+      Header: "Linked User",
+      accessor: "users",
       Cell: (row) => {
         return (
-          <div className="flex space-x-3 items-center text-left rtl:space-x-reverse">
-            <div className="flex-1 font-medium text-sm leading-4 whitespace-nowrap">
-                {isPurchase ? row?.cell?.value : row?.cell?.value?.length}
-            </div>
-          </div>
-        );
+            row?.cell?.value ? row?.cell?.value.map(user => <span key={user._id}>{user.email}</span>) : <span className="opacity-50 text-sm">No user assigned</span>
+            )
       },
     },
+    // {
+    //   Header: isPurchase ? "Cost" : "Users Linked",
+    //   accessor: isPurchase ? "cost" : "users",
+    //   Cell: (row) => {
+    //     return (
+    //       <div className="flex space-x-3 items-center text-left rtl:space-x-reverse">
+    //         <div className="flex-1 font-medium text-sm leading-4 whitespace-nowrap">
+    //             {isPurchase ? row?.cell?.value : row?.cell?.value?.length}
+    //         </div>
+    //       </div>
+    //     );
+    //   },
+    // },
     {
       Header: "action",
       accessor: "action",

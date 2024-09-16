@@ -1,9 +1,9 @@
 import React from "react";
 
 import Link from "next/link";
-import { message } from "@/constant/data";
 
 const MessageList = () => {
+    const message = []
   const newMessage = message.slice(0, 5);
   return (
     <div>

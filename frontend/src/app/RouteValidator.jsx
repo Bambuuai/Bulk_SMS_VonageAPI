@@ -5,12 +5,23 @@ import { USER_ENDPOINTS } from "@/constant/endpoints";
 import { useSelector } from "react-redux";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { selectAuthState } from "@/store/selectors";
+import { createSelector } from "@reduxjs/toolkit";
 
 const no_redirects = ["/register", "/forgot-password", "/reset-password", "/coming-soon", "/under-construction", "/faq", "/verify/account"]
 
+const selectAuthInfo = createSelector(
+  [selectAuthState],
+  (authState) => ({
+    auth: authState.auth,
+    username: authState.username,
+    isAdmin: authState.isAdmin,
+  })
+)
+
 export default function RouteValidator({ children }) {
   const router = useRouter();
-  const { auth, username, isAdmin } = useSelector((state) => state.auth ?? {});
+  const { auth, username, isAdmin } = useSelector(selectAuthInfo);
   const dispatch = useDispatch();
   const location = usePathname();
 

@@ -7,23 +7,6 @@ import Button from "@/components/ui/Button";
 import Loading from "@/components/Loading";
 import SkeletionTable from "@/components/skeleton/Table";
 
-const columns = [
-  {
-    label: "Name",
-    field: "age",
-  },
-  {
-    label: "First Name",
-    field: "first_name",
-  },
-
-  {
-    label: "Email",
-    field: "email",
-  },
-];
-// slice(0, 10) is used to limit the number of rows to 10
-// const rows = tableData.slice(0, 7);
 const CampaignReplies = () => {
     const [campaigns, setCampaigns] = useState([])
     const [isLoading, setIsLoading] = useState(true)

@@ -13,6 +13,10 @@ const baseEndpoints = {
     UPDATE_DNC: "/dnc/update",
     DELETE_DNCS: "/dnc/remove",
     IMPORT_DNC: "/dnc/import",
+    GET_CONTACTS_REPORT: "/reports/contacts",
+    GET_CAMPAIGNS_REPORT: "/reports/campaigns",
+    GET_MESSAGES_REPORT: "/reports/messages",
+    GET_MESSAGE_STATUS_REPORT: "/reports/messages/past-12-months"
 }
 
 function prefixEndpoints(prefix, endpoints, extra={}) {
@@ -42,14 +46,16 @@ const USER_ENDPOINTS = prefixEndpoints("/user", baseEndpoints, {
     GET_NUMBERS: "/numbers",
     GET_CHAT_CONTACTS: "/sms/chats",
     GET_CHAT: "/sms/chats",
-    SEND_MESSAGE: "/sms/chat"
+    SEND_MESSAGE: "/sms/chat",
 })
 
 const ADMIN_ENDPOINTS = prefixEndpoints("/admin", baseEndpoints, {
     GET_NUMBERS: "/numbers",
     BUY_NUMBER: "/numbers/buy",
     SEARCH_NUMBERS: "/numbers/search",
-    DID_ASSIGN_USERS: "/numbers/assign"
+    DID_ASSIGN_USERS: "/numbers/assign",
+    GET_USERS_REPORT: "/reports/users",
+    GET_MESSAGE_DELIVERY_REPORT: "/reports/messages/status/summary",
 })
 
 export { REGISTER_ENDPOINT, TOKEN_ENDPOINT, ACTIVATE_USER_ENDPOINT, USER_ENDPOINTS, ADMIN_ENDPOINTS }

@@ -4,23 +4,23 @@ const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 import useDarkMode from "@/hooks/useDarkMode";
 import useRtl from "@/hooks/useRtl";
 
-const RevenueBarChart = ({ height = 400 }) => {
+const RevenueBarChart = ({ height = 400, months, series }) => {
   const [isDark] = useDarkMode();
   const [isRtl] = useRtl();
-  const series = [
-    {
-      name: "Delivered",
-      data: [44, 55, 57, 56, 61, 58, 63, 60, 66],
-    },
-    {
-      name: "Sent",
-      data: [76, 85, 101, 98, 87, 105, 91, 114, 94],
-    },
-    {
-      name: "Replied",
-      data: [35, 41, 36, 26, 45, 48, 52, 53, 41],
-    },
-  ];
+  // const series = [
+  //   {
+  //     name: "Delivered",
+  //     data: [44, 55, 57, 56, 61, 58, 63, 60, 66],
+  //   },
+  //   {
+  //     name: "Sent",
+  //     data: [76, 85, 101, 98, 87, 105, 91, 114, 94],
+  //   },
+  //   {
+  //     name: "Replied",
+  //     data: [35, 41, 36, 26, 45, 48, 52, 53, 41],
+  //   },
+  // ];
   const options = {
     chart: {
       toolbar: {
@@ -88,17 +88,7 @@ const RevenueBarChart = ({ height = 400 }) => {
       },
     },
     xaxis: {
-      categories: [
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-      ],
+      categories: months,
       labels: {
         style: {
           colors: isDark ? "#CBD5E1" : "#475569",
@@ -119,7 +109,7 @@ const RevenueBarChart = ({ height = 400 }) => {
     tooltip: {
       y: {
         formatter: function (val) {
-          return "$ " + val + " thousands";
+          return val + " messages";
         },
       },
     },

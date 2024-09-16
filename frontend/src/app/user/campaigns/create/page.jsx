@@ -20,12 +20,12 @@ import notify from "@/app/notify";
 import { USER_ENDPOINTS } from "@/constant/endpoints"
 import "flatpickr/dist/themes/airbnb.css"
 import { normalGroups } from "@/utils";
+import {formatToDisplay} from "@/utils";
 
 const FormValidationSchema = yup
   .object({
       name: yup.string().required("Campaign name is required"),
       message: yup.string().required("Campaign message is required"),
-      // schedule_time: yup.date()
   })
   .required();
 
@@ -57,10 +57,8 @@ const CreateCampaignPage = () => {
   const [groupOptions, setGroupOptions] = useState([])
   const [userNumbers, setUserNumbers] = useState([])
   
-  const [scheduleNow, setScheduleNow] = useState(true);
   const [includeOptOut, setIncludeOptOut] = useState(false);
   const [groups, setGroups] = useState([]);
-  const [scheduleTime, setScheduleTime] = useState();
   const [msisdn, setMsisdn] = useState({})
   const [batchSize, setBatchSize] = useState(batchSizeOptions[0])
   const [buffer, setBuffer] = useState(bufferSizeOptions[0])
@@ -76,7 +74,7 @@ const CreateCampaignPage = () => {
 
     axios.get(USER_ENDPOINTS.GET_NUMBERS).then(({ data }) => {
       if (Array.isArray(data)) {
-        setUserNumbers(data.map(number => ({ value: number.msisdn, label: number.msisdn })))
+        setUserNumbers(data.map(number => ({ value: number.msisdn, label: formatToDisplay(number.msisdn) })))
       }
     }).finally(() => setIsLoadingNumbers(false))
   }, [])
@@ -93,7 +91,7 @@ const CreateCampaignPage = () => {
 
   const onSubmit = (data) => {
     setIsLoading(true)
-    const body = {...data, sender_msisdn: msisdn.value, contact_groups: normalGroups(groups, true), batch_size: batchSize.value, buffer_time: buffer.value, throttle: throttle.value, schedule_time: scheduleNow ? null : scheduleTime, schedule_now: scheduleNow, include_opt_out: includeOptOut}
+    const body = {...data, sender_msisdn: msisdn.value, contact_groups: normalGroups(groups, true), batch_size: batchSize.value, buffer_time: buffer.value, throttle: throttle.value, include_opt_out: includeOptOut}
     console.log(body)
     axios.post(USER_ENDPOINTS.CREATE_CAMPAIGN, body).then((response) => {
       if (response.data["_id"]) {
@@ -224,34 +222,6 @@ const CreateCampaignPage = () => {
                 required
               />
             </FormGroup>
-
-            {
-              !scheduleNow ? (
-                <div>
-                  <label className="form-label">
-                    Schedule Later
-                  </label>
-                  <div className="relative">
-                    <Flatpickr
-                      className="form-control py-2"
-                      placeholder="Select date & time to begin campaign..."
-                      name="schedule_time"
-                      options={{
-                        // altInput: true,
-                        enableTime: true,
-                        dateFormat: "F j, Y H:i",
-                        // dateFormat: "Y-m-d",
-                        time_24hr: true,
-                        minDate: "today",
-                        allowInput: false
-                      }}
-                      value={scheduleTime}
-                      onChange={(date) => setScheduleTime(date[0])}
-                    />
-                  </div>
-                </div>
-              ) : ""
-            }
           </div>
           <div className="grid grid-cols-1 gap-x-8 gap-y-5 schedule-time">
             
@@ -265,11 +235,6 @@ const CreateCampaignPage = () => {
               register={register} 
             />
             <div className="flex gap-x-10">
-              {/* <Checkbox
-                label="Schedule Now"
-                value={scheduleNow}
-                onChange={() => setScheduleNow(!scheduleNow)}
-              /> */}
               <Checkbox
                 label="Include Opt Out"
                 value={includeOptOut}
@@ -277,7 +242,6 @@ const CreateCampaignPage = () => {
               />
             </div>
           </div>
-          {/* Assign schedule_now to a state that toggles this element */}
           <div className="space-y-4">
             <Button type="submit" text="Submit" icon="heroicons-outline:arrow-long-right" iconPosition="right" className="btn-dark rounded-[999px]" isLoading={isLoading} />
           </div>

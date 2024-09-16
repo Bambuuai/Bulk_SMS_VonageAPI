@@ -14,6 +14,7 @@ import { USER_ENDPOINTS } from "@/constant/endpoints"
 import notify from "@/app/notify";
 import { useEffect, useState } from "react";
 import DropZone from "@/components/partials/froms/DropZone";
+import {formatToVonage, verifyNumbers} from "@/utils";
 
 
 const animatedComponents = makeAnimated();
@@ -31,7 +32,7 @@ const AddCONTACTs = () => {
   const [loadingFile, setLoadingFile] = useState(false);
   const [groupOptions, setGroupOptions] = useState([])
   const [isLoadingGroups, setIsLoadingGroups] = useState(true);
-  const { register, control, handleSubmit, reset, setValue, watch } = useForm({
+  const { register, control, handleSubmit, reset, setValue, watch, setError, formState: { errors } } = useForm({
     defaultValues: {
         contacts: [{name: "", phone_number: "", groups: [""], notes: ""}]
     },
@@ -76,9 +77,17 @@ const AddCONTACTs = () => {
   
   function onSubmit({ contacts }) {
     setIsLoading(true)
+    const hasErrors = verifyNumbers(contacts, setError, "contacts")
+    if (hasErrors) {
+      setIsLoading(false)
+      return;
+    }
+    contacts = formatToVonage(contacts)
+
     contacts.forEach(contact => {
-      if (contact.groups) {
-        contact.groups = contact.groups.map(group => group.value)
+      contact.groups = contact?.groups?.filter(group => group) ?? []
+      if (contact.groups.length) {
+        contact.groups = contact.groups.map(group => typeof group === "string" ? group?.toLowerCase() : group?.value?.toLowerCase())
       } else {
         contact.groups = ["default"]
       }
@@ -138,6 +147,7 @@ const AddCONTACTs = () => {
                         id={`phone-${index}`}
                         placeholder="+23470329126405"
                         register={register}
+                        error={errors?.contacts?.[index]?.phone_number}
                         name={`contacts[${index}].phone_number`}
                         required
                     />

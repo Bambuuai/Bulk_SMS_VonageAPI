@@ -1,15 +1,18 @@
 import dynamic from "next/dynamic";
 const Chart = dynamic(() => import("react-apexcharts"), { ssr: false });
 import useDarkMode from "@/hooks/useDarkMode";
+import {useEffect, useMemo} from "react";
 
-const BasicArea = ({ height = 350 }) => {
+const BasicArea = ({ height = 350, months, data }) => {
   const [isDark] = useDarkMode();
-  const series = [
+  useEffect(() => console.log(months, data), [months, data]);
+  const series = useMemo(() => [
     {
-      data: [90, 70, 85, 60, 80, 70, 90, 75, 60, 80],
+      // data: [90, 70, 85, 60, 80, 70, 90, 75, 60, 80],
+      data,
     },
-  ];
-  const options = {
+  ], [data]);
+  const options = useMemo(() => ({
     chart: {
       toolbar: {
         show: false,
@@ -51,20 +54,8 @@ const BasicArea = ({ height = 350 }) => {
       },
     },
     xaxis: {
-      categories: [
-        "Jan",
-        "Feb",
-        "Mar",
-        "Apr",
-        "May",
-        "Jun",
-        "Jul",
-        "Aug",
-        "Sep",
-        "Oct",
-        "Nov",
-        "Dec",
-      ],
+      // categories: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+      categories: months,
       labels: {
         style: {
           colors: isDark ? "#CBD5E1" : "#475569",
@@ -84,7 +75,7 @@ const BasicArea = ({ height = 350 }) => {
       bottom: 0,
       left: 0,
     },
-  };
+  }), [months, isDark]);
   return (
     <div>
       <Chart options={options} series={series} type="area" height={height} />

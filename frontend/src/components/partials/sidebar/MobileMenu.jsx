@@ -9,10 +9,19 @@ import Link from "next/link";
 import useMobileMenu from "@/hooks/useMobileMenu";
 import Icon from "@/components/ui/Icon";
 import { useSelector } from "react-redux";
+import {createSelector} from "@reduxjs/toolkit";
+import {selectAuthState} from "../../../store/selectors";
+
+const selectAuthInfo = createSelector(
+    [selectAuthState],
+    (authState) => ({
+      isAdmin: authState.isAdmin
+    })
+)
 
 const MobileMenu = ({ menuItems, className = "custom-class" }) => {
   const scrollableNodeRef = useRef();
-  const { isAdmin } = useSelector((state) => state.auth ?? {});
+  const { isAdmin } = useSelector(selectAuthInfo);
 
   const [scroll, setScroll] = useState(false);
   useEffect(() => {

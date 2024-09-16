@@ -6,6 +6,7 @@ import themeConfig from "@/configs/themeConfig";
 const initialState = {
   isRTL: themeConfig.layout.isRTL,
   darkMode: themeConfig.layout.darkMode,
+  // isCollapsed: themeConfig.layout.isCollapsed,
   isCollapsed: themeConfig.layout.isCollapsed,
   customizer: themeConfig.layout.customizer,
   semiDarkMode: themeConfig.layout.semiDarkMode,

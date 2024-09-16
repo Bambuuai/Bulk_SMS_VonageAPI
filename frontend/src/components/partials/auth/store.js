@@ -72,5 +72,5 @@ export const authSlice = createSlice({
   },
 });
 
-export const { handleRegister, handleAuth, handleLogout } = authSlice.actions;
+export const { handleAuth, handleLogout } = authSlice.actions;
 export default authSlice.reducer;

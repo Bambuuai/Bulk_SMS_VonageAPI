@@ -6,6 +6,8 @@ import Loading from "@/components/Loading";
 import Button from "@/components/ui/Button";
 import axios from "@/configs/axios-config";
 import { USER_ENDPOINTS } from "@/constant/endpoints";
+import { createSelector } from "@reduxjs/toolkit";
+import { selectChatState } from "@/store/selectors";
 
 const socials = [
   {
@@ -25,10 +27,21 @@ const socials = [
   },
 ];
 
+
+// Memoized selector for active chat and user
+const selectChatInfo = createSelector(
+  [selectChatState],
+  (chatState) => ({
+    activeChat: chatState.activeChat,
+    name: chatState.user.name,
+    firstName: chatState.user.name?.split(" ")[0] ?? "",
+    lastName: chatState.user.name?.split(" ")[1] ?? "",
+    notes: chatState.user.notes
+  })
+);
+
 const Info = () => {
-  const { activechat, user } = useSelector((state) => state.chat);
-  const firstName = user?.name?.split(" ")[0]
-  const lastName = user?.name?.split(" ")[1]
+  const { activeChat, firstName, lastName, name, notes } = useSelector(selectChatInfo);
 
   function addContactDnc() {
     // axios.post(USER_ENDPOINTS.)
@@ -37,8 +50,8 @@ const Info = () => {
   return (
     <SimpleBar className="full-content-height h-full p-6">
       {
-        user?.name ? (
-          <>
+        name ? (
+          <div className="h-full flex flex-col">
             <h4 className="text-xl text-slate-900 font-medium mb-8">About</h4>
             <div className="h-[100px] w-[100px] rounded-full mx-auto mb-4">
               <div className="w-full h-full rounded-full text-2xl bg-slate-200 flex items-center justify-center font-bold">
@@ -47,10 +60,10 @@ const Info = () => {
             </div>
             <div className="text-center">
               <h5 className="text-base text-slate-600 dark:text-slate-300 font-medium mb-1">
-                {user?.name}
+                {name}
               </h5>
               <h6 className="text-xs text-slate-600 dark:text-slate-300 font-normal">
-                {user?.notes}
+                {notes}
               </h6>
             </div>
             <ul className="list-item mt-12 space-y-4 border-b border-slate-100 dark:border-slate-700 pb-5 -mx-6 px-6">
@@ -72,8 +85,8 @@ const Info = () => {
                 <div className="font-medium">Oct 2021</div>
               </li>
             </ul>
-            <Button className="btn btn-danger w-full" onClick={addContactDnc}>Add to DNC</Button>
-          </>
+            <Button className="btn btn-danger w-full mt-auto" onClick={addContactDnc}>Add to DNC</Button>
+          </div>
         ) : <Loading className="h-full" />
       }
     </SimpleBar>

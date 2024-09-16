@@ -15,17 +15,25 @@ import {
   toggleMobileChatSidebar,
   setContactSearch,
 } from "@/components/partials/replies/store";
+import {selectChatData} from "@/store/selectors";
+import {closeChat} from "@/components/partials/replies/store";
+
+
 const ChatPage = () => {
   const { width, breakpoints } = useWidth();
   const dispatch = useDispatch();
-  const chat = useSelector((state) => state.chat ?? {})
-  console.log("This is the chat: ", chat)
-  const { activechat, openinfo, mobileChatSidebar, contacts, searchContact } =
-    useSelector((state) => state.chat ?? {});
+  const { activeChat, openInfo, mobileChatSidebar, contacts, searchContact } =
+    useSelector(selectChatData);
 
   const searchContacts = contacts?.filter((item) =>
     item.fullName.toLowerCase().includes(searchContact.toLowerCase())
   );
+
+  useEffect(() => {
+    return () => {
+      dispatch(closeChat());
+    }
+  })
 
   return (
     <div className="flex lg:space-x-5 chat-height overflow-hidden relative rtl:space-x-reverse">
@@ -82,7 +90,7 @@ const ChatPage = () => {
           {/* main message body*/}
           <div className="flex-1">
             <Card bodyClass="p-0 h-full" className="h-full bg-white">
-              {activechat ? (
+              {activeChat ? (
                 <div className="divide-y divide-slate-100 dark:divide-slate-700 h-full">
                   <Chat />
                 </div>
@@ -92,7 +100,7 @@ const ChatPage = () => {
             </Card>
           </div>
           {/* right side information*/}
-          {width > breakpoints.lg && openinfo && activechat && (
+          {width > breakpoints.lg && openInfo && activeChat && (
             <div className="flex-none w-[285px]">
               <Card bodyClass="p-0 h-full" className="h-full bg-white">
                 <Info />

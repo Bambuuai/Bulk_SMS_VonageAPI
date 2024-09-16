@@ -1,4 +1,4 @@
-import { inter } from "@/app/layout" 
+import { Inter } from "next/font/google";
 import Icon from "@/components/ui/Icon";
 
 const themeMap = {
@@ -14,6 +14,8 @@ const iconMap = {
     info: "information-circle",
     warning: "no-symbol"
 }
+
+export const inter = Inter({ subsets: ["latin"] });
 
 export default function CustomToast({ message, type, closeToast }) {
     return (

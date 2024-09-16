@@ -30,13 +30,13 @@ const time = () => {
 };
 
 const Chat = ({ campaignId }) => {
-  const { openinfo, mobileChatSidebar, messFeed, user } =
+  const { openInfo, mobileChatSidebar, messFeed, user } =
     useSelector((state) => state.chat);
 
   const { firstName, lastName } = useSelector(state => state.auth ?? {})
   
-  const userFirstName = user?.name?.split(" ")[0]
-  const userLastName = user?.name?.split(" ")[1]
+  const userFirstName = user?.name?.split(" ")[0] ?? ""
+  const userLastName = user?.name?.split(" ")[1] ?? ""
   const { width, breakpoints } = useWidth();
   const dispatch = useDispatch();
   const [message, setMessage] = useState("");
@@ -91,7 +91,7 @@ const Chat = ({ campaignId }) => {
           </div>
           <div className="flex-none flex md:space-x-3 space-x-1 items-center rtl:space-x-reverse">
             <div
-              onClick={() => dispatch(infoToggle(!openinfo))}
+              onClick={() => dispatch(infoToggle(!openInfo))}
               className="msg-action-btn"
             >
               <Icon icon="heroicons-outline:dots-horizontal" />
@@ -108,7 +108,7 @@ const Chat = ({ campaignId }) => {
             messFeed?.length ? (
               messFeed.map((item, i) => (
                 <div className="block md:px-6 px-4" key={i}>
-                  {!item.user_id ? (
+                  {item.type === "reply" ? (
                     <div className="flex space-x-2 items-start group rtl:space-x-reverse">
                       <div className="flex-none">
                       <div className="h-8 w-8 rounded-full text-xs bg-slate-700 text-slate-200 flex items-center justify-center font-semibold">
@@ -139,7 +139,7 @@ const Chat = ({ campaignId }) => {
                     </div>
                   ) : ""}
                   {/* sender */}
-                  {item.user_id ? (
+                  {item.type === "sent" ? (
                     <div className="flex space-x-2 items-start justify-end group w-full rtl:space-x-reverse">
                       <div className="no flex space-x-4 rtl:space-x-reverse">
                         {/* <div className="opacity-0 invisible group-hover:opacity-100 group-hover:visible">
@@ -165,7 +165,7 @@ const Chat = ({ campaignId }) => {
                       </div>
                       <div className="flex-none">
                         <div className="h-8 w-8 rounded-full text-xs bg-slate-900 text-slate-200 flex items-center justify-center font-semibold">
-                          {firstName.charAt(0) + lastName.charAt(0)}
+                          {firstName?.charAt(0) + lastName?.charAt(0)}
                         </div>
                       </div>
                     </div>

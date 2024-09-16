@@ -12,6 +12,7 @@ import {
   useGlobalFilter,
   usePagination,
 } from "react-table";
+import {formatToDisplay} from "@/utils";
 
 const dateFormatingOptions = {
   weekday: 'short', // "Fri"
@@ -23,7 +24,7 @@ const dateFormatingOptions = {
   hour12: true,     // "PM"
 };
 
-const CampaignList = ({ campaigns, updateCampaignEdit, deleteCampaign, addToQueue, editing }) => {
+const CampaignList = ({ campaigns, updateCampaignEdit, deleteCampaign, addToQueue, editing, toggleScheduleModal }) => {
   const dispatch = useDispatch();
   const router = useRouter();
 
@@ -75,21 +76,21 @@ const CampaignList = ({ campaigns, updateCampaignEdit, deleteCampaign, addToQueu
       Header: "Assigned Number",
       accessor: "sender_msisdn",
       Cell: (row) => {
-        return <div>{row?.cell?.value}</div>;
+        return <div>{formatToDisplay(row?.cell?.value)}</div>;
       },
     },
-    {
-      Header: "Scheduled Time",
-      accessor: "schedule_now",
-      Cell: ({ row, cell }) => {
-        console.log(cell?.value, row)
-        const field_value = cell?.value ? row?.original?.created_at : row?.original?.schedule_time
-        const date = new Date(field_value)
-
-        const formattedDate = date.toLocaleString('en-US', dateFormatingOptions);
-        return <div>{ formattedDate }</div>;
-      },
-    },
+    // {
+    //   Header: "Scheduled Time",
+    //   accessor: "schedule_now",
+    //   Cell: ({ row, cell }) => {
+    //     console.log(cell?.value, row)
+    //     const field_value = cell?.value ? row?.original?.created_at : row?.original?.schedule_time
+    //     const date = new Date(field_value)
+    //
+    //     const formattedDate = date.toLocaleString('en-US', dateFormatingOptions);
+    //     return <div>{ formattedDate }</div>;
+    //   },
+    // },
     {
       Header: "Action",
       accessor: "action",
@@ -123,11 +124,22 @@ const CampaignList = ({ campaigns, updateCampaignEdit, deleteCampaign, addToQueu
                 <Icon icon="heroicons-solid:queue-list" />
               </button>
             </Tooltip>
+            <Tooltip
+                content="Schedule Campaign"
+                placement="top"
+                arrow
+                animation="shift-away"
+                theme="primary"
+            >
+              <button className="action-btn btn-primary" type="button" onClick={() => toggleScheduleModal(row?.original)}>
+                <Icon icon="heroicons-solid:clock" />
+              </button>
+            </Tooltip>
           </div>
         );
       },
     },
-  ], [addToQueue, deleteCampaign, updateCampaignEdit]);
+  ], [addToQueue, deleteCampaign, updateCampaignEdit, toggleScheduleModal]);
 
   const columns = useMemo(() => COLUMNS, [COLUMNS]);
   const data = useMemo(() => campaigns, [campaigns]);

@@ -6,6 +6,7 @@ import CampaignList from "@/components/partials/campaigns/CampaignList";
 import Loading from "@/components/Loading";
 import notify from "@/app/notify";
 import EditCampaign from "@/components/partials/campaigns/EditCampaign";
+import ScheduleCampaign from "@/components/partials/campaigns/ScheduleCampaign";
 import axios from "@/configs/axios-config";
 import { USER_ENDPOINTS } from "@/constant/endpoints";
 
@@ -15,6 +16,7 @@ const ManageCampaignsPage = () => {
   const [campaigns, setCampaigns] = useState([])
   const [campaignEdit, setCampaignEdit] = useState()
   const [editing, setEditing] = useState([])
+  const [scheduleCampaign, setScheduleCampaign] = useState(false)
 
   useEffect(() => {
     axios.get(USER_ENDPOINTS.GET_CAMPAIGNS).then(({ data }) => {
@@ -45,8 +47,12 @@ const ManageCampaignsPage = () => {
   function addCampaignToQueue(id) {
     console.log("Edit it", id)
     setEditing(former => [...former, id])
-    axios.post(USER_ENDPOINTS.ADD_CAMPAIGN_TO_QUEUE, [id]).then(({ data }) => {
-      if (Array.isArray(data)) {
+    const body = {
+      campaign_ids: [id],
+      start_times: [false]
+    }
+    axios.post(USER_ENDPOINTS.ADD_CAMPAIGN_TO_QUEUE, body).then(({ data }) => {
+      if (data.success) {
         console.log(data)
         notify.success("Campaign added to queue")
       }
@@ -80,7 +86,7 @@ const ManageCampaignsPage = () => {
       {isLoaded && (
         campaigns.length ? (
           <div>
-            <CampaignList campaigns={campaigns} updateCampaignEdit={updateCampaignEdit} deleteCampaign={deleteCampaign} addToQueue={addCampaignToQueue} editing={editing} />
+            <CampaignList campaigns={campaigns} updateCampaignEdit={updateCampaignEdit} deleteCampaign={deleteCampaign} addToQueue={addCampaignToQueue} editing={editing} toggleScheduleModal={setScheduleCampaign} />
           </div>
         ) : (
           <div className="h-full flex flex-col justify-center items-center container-center">
@@ -89,7 +95,9 @@ const ManageCampaignsPage = () => {
           </div>
         )
       )}
+
       <EditCampaign campaignEdit={campaignEdit} setCampaignEdit={setCampaignEdit} updateLocalCampaign={updateLocalCampaign} />
+      <ScheduleCampaign campaignToSchedule={scheduleCampaign} setCampaignToSchedule={setScheduleCampaign} />
     </div>
   );
 };

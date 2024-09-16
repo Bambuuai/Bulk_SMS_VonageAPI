@@ -1,4 +1,3 @@
-import { v4 as uuidv4 } from "uuid";
 const themeConfig = {
   app: {
     name: "Bulkage",
@@ -6,6 +5,7 @@ const themeConfig = {
   // layout
   layout: {
     isRTL: false,
+    isCollapsed: false,
     darkMode: false,
     semiDarkMode: true,
     skin: "default",

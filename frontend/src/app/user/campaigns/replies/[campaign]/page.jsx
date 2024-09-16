@@ -13,25 +13,23 @@ import Info from "@/components/partials/replies/Info";
 import axios from "@/configs/axios-config"
 import { USER_ENDPOINTS } from "@/constant/endpoints"
 import { setContacts } from "@/components/partials/replies/store"
-
-
 import {
   toggleMobileChatSidebar,
   setContactSearch,
 } from "@/components/partials/replies/store";
 import Loading from "@/components/Loading";
+import {selectChatData} from "@/store/selectors";
+
 
 const ChatPage = ({ params }) => {
   const { width, breakpoints } = useWidth();
   const [isLoading, setIsLoading] = useState(true)
   const dispatch = useDispatch();
-  const chat = useSelector((state) => state.chat ?? {})
-  console.log("This is the chat: ", chat)
-  const { activechat, openinfo, mobileChatSidebar, contacts, searchContact } =
-    useSelector((state) => state.chat ?? {});
+  const { activeChat, openInfo, mobileChatSidebar, contacts, searchContact } =
+    useSelector(selectChatData);
 
   const searchContacts = contacts?.filter((item) => {
-    console.log(item)
+    // console.log(item)
     return item.info.name.toLowerCase().includes(searchContact.toLowerCase())
   }
   );
@@ -105,7 +103,7 @@ const ChatPage = ({ params }) => {
           {/* main message body*/}
           <div className="flex-1">
             <Card bodyClass="p-0 h-full" className="h-full bg-white">
-              {activechat ? (
+              {activeChat ? (
                 <div className="divide-y divide-slate-100 dark:divide-slate-700 h-full">
                   <Chat campaignId={params.campaign} />
                 </div>
@@ -115,7 +113,7 @@ const ChatPage = ({ params }) => {
             </Card>
           </div>
           {/* right side information*/}
-          {width > breakpoints.lg && openinfo && activechat && (
+          {width > breakpoints.lg && openInfo && activeChat && (
             <div className="flex-none w-[285px]">
               <Card bodyClass="p-0 h-full" className="h-full bg-white">
                 <Info />

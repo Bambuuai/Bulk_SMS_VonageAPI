@@ -17,37 +17,43 @@ const animatedComponents = makeAnimated();
 
 const EditMsisdn = ({ setNumberEdit, numberEdit, updateNumber }) => {
   const [isLoading, setIsLoading] = useState(false);
-  const [selected, setSelected] = useState([]);
+  const [selected, setSelected] = useState({});
   const [users, setUsers] = useState([])
   const [userData, setUserData] = useState([])
   const [isLoadingUsers, setIsLoadingUsers] = useState(true)
 
   useEffect(() => {
     // reset(numberEdit);
-    let assignedUsers = []
+    let assignedUser = { label: "", value: "" }
+    console.log(assignedUser)
     if (numberEdit) {
-      assignedUsers = numberEdit?.users?.map(user => ({label: user.email, value: user._id}))
+      assignedUser.label = numberEdit?.users?.[0]?.email
+      assignedUser.value = numberEdit?.users?.[0]?._id
+      // assignedUsers = numberEdit?.users?.map(user => ({label: user.email, value: user._id}))
+      // assignedUser = numberEdit?.users?.[0]?.(user => ({label: user.email, value: user._id}))
     }
-    setSelected(assignedUsers)
+    setSelected(assignedUser)
+    setIsLoading(false)
   }, [numberEdit]);
 
   const onSubmit = (e) => {
     e.preventDefault();
+    console.log(numberEdit)
     setIsLoading(true)
     const did = numberEdit.msisdn
-    const userIds = selected.map(option => option.value)
-
     console.log(selected)
+    const userId = selected.value
+
     axios.post(ADMIN_ENDPOINTS.DID_ASSIGN_USERS, {
       number: numberEdit,
-      users: userIds
+      user: userId
     }).then(({ data }) => {
       console.log(data)
       if (data.success) {
-        console.log(userIds, userData, userData.filter(user => userIds.includes(user._id)))
-        updateNumber(did, userData.filter(user => userIds.includes(user._id)));
+        console.log(userId, userData, userData.filter(user => userId === user._id))
+        updateNumber(did, userData.filter(user => userId === user._id));
         setNumberEdit(false);
-        notify.success(`User${selected.length > 1 ? "s" : ""} updated for number ${numberEdit.msisdn}`);
+        notify.success(`User updated for number ${numberEdit.msisdn}`);
       }
     }).finally(() => {
       setIsLoading(false)
@@ -65,12 +71,13 @@ const EditMsisdn = ({ setNumberEdit, numberEdit, updateNumber }) => {
   }, []);
 
   useEffect(() => {
-    console.log(selected)
+    console.log(selected, selected.value === numberEdit?.users?.[0]?._id)
   }, [selected])
 
   return (
     <Modal
       title="Assign Users"
+      className="max-w-xl !overflow-visible"
       activeModal={Boolean(numberEdit)}
       onClose={() => setNumberEdit(false)}
       centered
@@ -95,12 +102,12 @@ const EditMsisdn = ({ setNumberEdit, numberEdit, updateNumber }) => {
             onChange={(selectedOptions) => {
               setSelected(selectedOptions);
             }}
-            isMulti
           />
         </FormGroup>
 
-        <div className="">
-          <Button text={`Assign User${selected.length > 1 ? "s" : ""}`} type="submit" className="btn btn-dark" isLoading={isLoading} />
+        <div className="mt-4">
+          <Button text="Assign User" type="submit" className="btn btn-dark disabled:pointer-events-none" isLoading={isLoading} disabled={selected.value === numberEdit?.users?.[0]?._id} />
+          {/* disabled={selected.value === numberEdit?.users?.[0]._id} */}
         </div>
       </form>
     </Modal>

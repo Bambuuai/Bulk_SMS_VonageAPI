@@ -13,6 +13,7 @@ import {
   useGlobalFilter,
   usePagination,
 } from "react-table";
+import {formatToDisplay} from "@/utils";
 
 
 const DNCList = ({ dncs, setDncEdit, deleteDnc, deleting }) => {
@@ -39,7 +40,7 @@ const DNCList = ({ dncs, setDncEdit, deleteDnc, deleting }) => {
       Header: "Phone Number",
       accessor: "phone_number",
       Cell: (row) => {
-        return <span>{row?.cell?.value}</span>;
+        return <span>{formatToDisplay(row?.cell?.value)}</span>;
       },
     },
     {

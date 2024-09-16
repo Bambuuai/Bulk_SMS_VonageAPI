@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, {useCallback, useEffect, useRef, useState} from "react";
 import Select, { components } from "react-select";
 import Modal from "@/components/ui/Modal";
 import { useSelector, useDispatch } from "react-redux";
@@ -15,135 +15,38 @@ import { v4 as uuidv4 } from "uuid";
 import FormGroup from "@/components/ui/FormGroup";
 import { ADMIN_ENDPOINTS } from "@/constant/endpoints";
 import axios from "@/configs/axios-config";
-import MsisdnList from "./MsisdnList";
+import AvailableMsisdn from "./AvailableMsisdn";
 import notify from "@/app/notify";
 
-const styles = {
-  multiValue: (base, state) => {
-    return state.data.isFixed ? { ...base, opacity: "0.5" } : base;
-  },
-  multiValueLabel: (base, state) => {
-    return state.data.isFixed
-      ? { ...base, color: "#626262", paddingRight: 6 }
-      : base;
-  },
-  multiValueRemove: (base, state) => {
-    return state.data.isFixed ? { ...base, display: "none" } : base;
-  },
-  option: (provided, state) => ({
-    ...provided,
-    fontSize: "14px",
-  }),
-};
-
-const assigneeOptions = [
-  {
-    value: "mahedi",
-    label: "Mahedi Amin",
-    image: "/assets/images/avatar/av-1.svg",
-  },
-  {
-    value: "sovo",
-    label: "Sovo Haldar",
-    image: "/assets/images/avatar/av-2.svg",
-  },
-  {
-    value: "rakibul",
-    label: "Rakibul Islam",
-    image: "/assets/images/avatar/av-3.svg",
-  },
-  {
-    value: "pritom",
-    label: "Pritom Miha",
-    image: "/assets/images/avatar/av-4.svg",
-  },
-];
-const options = [
-  {
-    value: "team",
-    label: "team",
-  },
-  {
-    value: "low",
-    label: "low",
-  },
-  {
-    value: "medium",
-    label: "medium",
-  },
-  {
-    value: "high",
-    label: "high",
-  },
-  {
-    value: "update",
-    label: "update",
-  },
-];
-
-const OptionComponent = ({ data, ...props }) => {
-  //const Icon = data.icon;
-
-  return (
-    <components.Option {...props}>
-      <span className="flex items-center space-x-4">
-        <div className="flex-none">
-          <div className="h-7 w-7 rounded-full">
-            <img
-              src={data.image}
-              alt=""
-              className="w-full h-full rounded-full"
-            />
-          </div>
-        </div>
-        <span className="flex-1">{data.label}</span>
-      </span>
-    </components.Option>
-  );
-};
 
 const AddMsisdn = ({ open, toggleAddModal, updateNumbers }) => {
   const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(true);
-  const [available, setAvailable] = useState([])
+  const [available, setAvailable] = useState(Array(10).fill({}))
   const [purchasingNumbers, setPurchasingNumbers] = useState([]);
+  // const [size, setSize] = useState(10)
+  //   const [page, setPage] = useState(1)
+    const [count, setCount] = useState(7)
+    const fetchIdRef = useRef(0)
 
-  const FormValidationSchema = yup
-    .object({
-      country: yup.string().required("Title is required"),
-      type: yup.mixed().required("Assignee is required"),
-      features: yup.mixed().required("Tag is required"),
-    })
-    .required();
+  const getNumbers = useCallback((page, size) => {
+      const fetchId = ++fetchIdRef.current
+      console.log(fetchId, fetchIdRef)
 
-  const {
-    register,
-    control,
-    reset,
-    formState: { errors },
-    handleSubmit,
-  } = useForm({
-    resolver: yupResolver(FormValidationSchema),
-    mode: "all",
-  });
+      if (fetchId === fetchIdRef.current) {
+          setIsLoading(true)
+          axios.get(ADMIN_ENDPOINTS.SEARCH_NUMBERS, { params: {size, page: page} }).then(({ data }) => {
+              setCount(Math.ceil(data.count / size))
+              setAvailable(data.numbers)
+          }).finally(() => setIsLoading(false))
+      }
+  }, [])
 
-  const onSubmit = (data) => {
-    const search = {
-    };
-
-    // dispatch(pushMsisdn(msisdn));
-    // dispatch(toggleAddModal(false));
-    reset();
-  };
-
-  useEffect(() => {
-    if (open) {
-        setIsLoading(true)
-        axios.get(ADMIN_ENDPOINTS.SEARCH_NUMBERS).then(({ data }) => {
-            setAvailable(data)
-        }).finally(() => setIsLoading(false))
-    }
-  }, [open])
+  // useEffect(() => {
+  //   if (open) {
+  //       getNumbers(0, 10)
+  //   }
+  // }, [open, getNumbers])
 
   function purchaseNumber(number) {
     setPurchasingNumbers(former => [...former, number.msisdn])
@@ -156,6 +59,10 @@ const AddMsisdn = ({ open, toggleAddModal, updateNumbers }) => {
         }
     }).finally(() => setPurchasingNumbers(former => former.filter(msisdn => msisdn != number.msisdn)))
   }
+
+  // function fetchPage(page, size) {
+  //     getNumbers(page, size)
+  // }
 
   return (
     <div>
@@ -288,15 +195,15 @@ const AddMsisdn = ({ open, toggleAddModal, updateNumbers }) => {
             <button className="btn btn-dark  text-center">Add</button>
           </div>
         </form> */}
-        {isLoading && (
-            <TableLoading count={6} />
-        )}
+        {/*{isLoading && (*/}
+        {/*    <TableLoading count={10} />*/}
+        {/*)}*/}
         {
-            !isLoading && (
+            // !isLoading && (
                 <div>
-                    <MsisdnList msisdns={available} isPurchase={true} buyNumber={purchaseNumber} operating={purchasingNumbers} />
+                    <AvailableMsisdn msisdns={available} isPurchase={true} buyNumber={purchaseNumber} isLoading={isLoading} operating={purchasingNumbers} fetchPage={getNumbers} pageCount={count} />
                 </div>
-            )
+            // )
         }
       </Modal>
     </div>

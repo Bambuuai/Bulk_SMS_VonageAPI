@@ -25,7 +25,7 @@ function Button({
           className={`btn btn inline-flex justify-center   ${
             isLoading ? " pointer-events-none" : ""
           }
-        ${disabled ? " opacity-40 cursor-not-allowed" : ""}
+        ${disabled ? " opacity-40 cursor-not-allowed pointer-events-none" : ""}
         ${className}`}
         >
           {/* if has children and not loading*/}
@@ -86,7 +86,7 @@ function Button({
           className={`btn btn inline-flex justify-center   ${
             isLoading ? " pointer-events-none" : ""
           }
-        ${disabled ? " opacity-40 cursor-not-allowed" : ""}
+        ${disabled ? " opacity-40 cursor-not-allowed pointer-events-none" : ""}
         ${className}`}
         >
           {/* if has children and not loading*/}
@@ -147,7 +147,7 @@ function Button({
           className={`btn btn inline-flex justify-center   ${
             isLoading ? " pointer-events-none" : ""
           }
-        ${disabled ? " opacity-40 cursor-not-allowed" : ""}
+        ${disabled ? " opacity-40 cursor-not-allowed pointer-events-none" : ""}
         ${className}`}
         >
           {/* if has children and not loading*/}
