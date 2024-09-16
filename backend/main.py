@@ -4,6 +4,7 @@ from datetime import datetime
 import uvicorn
 from fastapi import FastAPI, Request, Response, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from pymongo.errors import DuplicateKeyError, BulkWriteError
 from vonage_jwt.verify_jwt import verify_signature
 
 from database import user_collection, dnc_collection, contact_collection, sms_campaign_collection, messages_collection
@@ -11,7 +12,7 @@ from environment import VONAGE_SIGNATURE_SECRET
 from models.auth_models import IdentityFields
 from models.base_models import BaseResponse
 from models.dnc_models import DNCEntry
-from models.sms_models import MessageStatus
+from models.sms_models import MessageStatus, MessageType
 from routers import admin
 from routers import auth, user, dnc, profile, campaign
 from utilities import debug, logger, verify_email_token, pst_tz
@@ -117,12 +118,53 @@ async def receive_replies(request: Request):
         message_data = dict(request.query_params)
         message = message_data.get("text")
         sender_msisdn = message_data.get("msisdn")
+        recipient_did = message_data.get("to")
 
         if message.lower() == "stop":
-            dnc_contact = DNCEntry(phone_number=sender_msisdn, reason="Opted out", added_at=datetime.now(pst_tz),
-                                   created_by="admin", scope="user")
-            add_dnc = await dnc_collection.insert_one(dnc_contact.model_dump(exclude_unset=True))
-            debug(add_dnc.inserted_id)
+            matching_campaigns = await sms_campaign_collection.find({
+                "sender_msisdn": recipient_did
+            }).to_list(None)
+
+            if matching_campaigns:
+                # Collect unique users who created these campaigns
+                user_ids = {campaign['created_by'] for campaign in matching_campaigns if
+                            campaign["include_opt_out"] == True}
+                dnc_list = []
+
+                # Add the number to the DNC list for each user
+                for user_id in user_ids:
+                    dnc_contact = DNCEntry(
+                        phone_number=sender_msisdn,
+                        reason="Opted out",
+                        added_at=datetime.now(pst_tz),
+                        created_by=user_id,  # Use the campaign creator's user_id
+                        scope="user"
+                    )
+                    dnc_list.append(dnc_contact.model_dump(exclude_unset=True))
+                    debug(dnc_contact.model_dump(exclude_unset=True))
+
+                if dnc_list:
+                    try:
+                        add_dnc = await dnc_collection.insert_many(dnc_list)
+                        debug(f"Added to DNC: {add_dnc.inserted_ids}")
+                    except DuplicateKeyError:
+                        debug(f"Contact(s) already in DNC")
+                    except BulkWriteError as e:
+                        debug("Bulk write error occurred", e)
+                else:
+                    debug("Matching campaigns have disabled opt-out")
+            else:
+                print("No campaigns found with the matching sender_msisdn.")
+
+            # TODO: Implement logic to get the user's id, instead of "admin"
+            # dnc_contact = DNCEntry(phone_number=sender_msisdn, reason="Opted out", added_at=datetime.now(pst_tz),
+            #                        created_by="admin", scope="user")
+            # try:
+            #     add_dnc = await dnc_collection.insert_one(dnc_contact.model_dump(exclude_unset=True))
+            #     debug(add_dnc.inserted_id)
+            # except DuplicateKeyError:
+            #     print("Contact already in DNC")
+            # debug(dnc_contact.model_dump(exclude_unset=True))
         # debug(message_data)
 
         timestamp_format = "%Y-%m-%d %H:%M:%S"
@@ -130,6 +172,7 @@ async def receive_replies(request: Request):
         debug("Converted datetime:", message_datetime)
 
         related_campaign_ids = []
+        related_user_ids = []
         contact = await contact_collection.find_one({"phone_number": sender_msisdn})
         if contact:
             related_campaigns = await sms_campaign_collection.find(
@@ -138,18 +181,20 @@ async def receive_replies(request: Request):
 
             # Extract campaign IDs
             related_campaign_ids = [str(campaign["_id"]) for campaign in related_campaigns]
+            related_user_ids = [str(campaign["created_by"]) for campaign in related_campaigns]
 
         db_message = {
+            "type": MessageType.reply,
             "message_type": message_data.get("type"),
             "sender_did": sender_msisdn,
-            "recipient_did": message_data.get("to"),
+            "recipient_did": recipient_did,
             "keyword": message_data.get("keyword"),
             "message_id": message_data.get("messageId"),
             "message": message,
             "sent_at": message_datetime,
             "status": MessageStatus.accepted,
-            "user_id": None,
             "campaigns": related_campaign_ids,
+            "users": related_user_ids
         }
 
         results = await messages_collection.insert_one(db_message)
@@ -195,6 +240,7 @@ async def receive_replies(request: Request):
         debug("Converted datetime:", message_datetime)
 
         related_campaign_ids = []
+        related_user_ids = []
         contact = await contact_collection.find_one({"phone_number": sender_msisdn})
         if contact:
             related_campaigns = await sms_campaign_collection.find(
@@ -203,8 +249,10 @@ async def receive_replies(request: Request):
 
             # Extract campaign IDs
             related_campaign_ids = [str(campaign["_id"]) for campaign in related_campaigns]
+            related_user_ids = [str(campaign["created_by"]) for campaign in related_campaigns]
 
         db_message = {
+            "type": MessageType.reply,
             "message_type": message_data.get("type"),
             "sender_did": sender_msisdn,
             "recipient_did": message_data.get("to"),
@@ -213,8 +261,8 @@ async def receive_replies(request: Request):
             "message": message,
             "sent_at": message_datetime,
             "status": MessageStatus.accepted,
-            "user_id": None,
             "campaigns": related_campaign_ids,
+            "users": related_user_ids
         }
 
         results = await messages_collection.insert_one(db_message)
@@ -229,3 +277,5 @@ async def receive_replies(request: Request):
 if __name__ == "__main__":
     # uvicorn.run(app, host="0.0.0.0", port=8000)
     uvicorn.run("main:app", reload=True)
+
+# TODO: Make sure only one number is assigned to one user

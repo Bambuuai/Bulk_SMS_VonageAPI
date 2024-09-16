@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from math import ceil
-from typing import List, Annotated, Optional
+from typing import List, Annotated, Optional, Union
 
 from bson import ObjectId
 from celery.result import AsyncResult
@@ -15,11 +15,11 @@ from models.auth_models import UserWithMSI
 from models.base_models import PyObjectId, BaseResponse
 from models.sms_models import SMSCampaign, SMSCampaignQueue, SMSCampaignStatus, CampaignChat, SMSCampaignForm, \
     SMSCampaignFromDB, SMSCampaignQueueWithCampaign, QueueStatusUpdate, Message, CampaignWithMsg, ChatContacts, Reply, \
-    MessageStatus
-from utilities import debug, to_pst, validate_message
+    MessageStatus, MessageType
+from utilities import debug, validate_message
 from vonage_api import vonage_client
 from worker import send_bulk_sms
-from .auth import get_current_active_user  # Import the auth dependency for user authentication
+from .utilities import get_current_active_user
 
 router = APIRouter(prefix="/sms", tags=["sms"])
 
@@ -160,11 +160,18 @@ async def list_sms_campaign_queue(current_user: Annotated[UserWithMSI, Depends(g
     return queued_campaigns_with_details
 
 
-@router.post("/queue", response_model=List[SMSCampaignQueue])
+@router.post("/queue", response_model=BaseResponse)
 async def add_campaigns_to_queue(
         campaign_ids: Annotated[List[PyObjectId], Body()],
+        start_times: Annotated[List[Union[datetime, bool]], Body()],  # List of start times (datetime or False)
         current_user: Annotated[UserWithMSI, Depends(get_current_active_user)],
-):
+) -> BaseResponse:
+    if len(campaign_ids) != len(start_times):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The number of campaign_ids and start_times must be the same."
+        )
+
     # Fetch all campaigns in a single query
     campaigns = await sms_campaign_collection.find(
         {"_id": {"$in": [ObjectId(cid) for cid in campaign_ids]}, "created_by": current_user.id}
@@ -182,7 +189,7 @@ async def add_campaigns_to_queue(
     now = datetime.now(timezone.utc)
     new_queue_data = []
 
-    for campaign in campaigns:
+    for campaign, start_time in zip(campaigns, start_times):
         campaign_contacts = await contact_collection.count_documents(
             {"created_by": campaign["created_by"], "groups": {"$in": campaign["contact_groups"]}}
         )
@@ -195,14 +202,18 @@ async def add_campaigns_to_queue(
 
         total_batches = ceil(campaign_contacts / campaign["batch_size"])
 
-        # Create the queue entry
+        # Determine the status based on the start_time
+        campaign_status = SMSCampaignStatus.scheduled if start_time else SMSCampaignStatus.in_progress
+
+        # Create the queue entry with the given start_time or immediate start
         queue_data = SMSCampaignQueue(
             campaign_id=campaign["_id"],
-            status=SMSCampaignStatus.scheduled,
+            status=campaign_status,
             current_batch=0,
             total_batches=total_batches,
             created_at=now,
             created_by=current_user.id,  # Store the user ID
+            schedule_time=start_time if start_time else now  # Store the schedule time in the queue
         )
         queue_entry = queue_data.model_dump(exclude_unset=True, by_alias=True)
         new_queue_data.append(queue_entry)
@@ -211,26 +222,30 @@ async def add_campaigns_to_queue(
     result = await sms_queue_collection.insert_many(new_queue_data)
 
     # Schedule SMS sending tasks
-    for queue_id, campaign in zip(result.inserted_ids, campaigns):
+    for queue_id, (campaign, start_time) in zip(result.inserted_ids, zip(campaigns, start_times)):
         celery_task = None
-        debug("Starting task soon: ", queue_id, campaign)
-        sch_time = campaign.get("schedule_time", None)
-        if not sch_time:
-            # Run the campaign immediately
-            celery_task = send_bulk_sms.delay(str(queue_id), current_user.id)
-        if sch_time:
-            # Calculate the delay until the scheduled time
-            schedule_time = sch_time.replace(tzinfo=timezone.utc)
+        debug("Starting task soon: ", queue_id, campaign, start_time)
+
+        if start_time:  # If start_time is provided (datetime), schedule it
+            schedule_time = start_time.replace(tzinfo=timezone.utc)
             delay = (schedule_time - now).total_seconds()
+            debug(delay)
 
             if delay > 0:
+                # Schedule the task for the future
                 celery_task = send_bulk_sms.apply_async(
                     (str(queue_id), current_user.id),
                     countdown=delay
                 )
+                debug("Task in future", celery_task)
             else:
                 # If the scheduled time has already passed, run it immediately
                 celery_task = send_bulk_sms.delay(str(queue_id), current_user.id)
+                debug("Task in present because time is past", celery_task)
+        else:
+            # Run the campaign immediately
+            celery_task = send_bulk_sms.delay(str(queue_id), current_user.id)
+            debug("Task in present as requested", celery_task)
 
         # Update the task_id in the queue entry
         await sms_queue_collection.update_one(
@@ -238,12 +253,8 @@ async def add_campaigns_to_queue(
             {"$set": {"task_id": celery_task.id}}
         )
 
-    # Retrieve and return the inserted queue entries
-    queue_entries = await sms_queue_collection.find(
-        {"_id": {"$in": result.inserted_ids}}
-    ).to_list(len(result.inserted_ids))
-
-    return queue_entries
+    debug(result)
+    return BaseResponse(success=True, data=[str(qid) for qid in result.inserted_ids])
 
 
 @router.delete("/queue", response_model=BaseResponse)
@@ -354,62 +365,112 @@ async def get_campaign_chats(
     pipeline = [
         {
             '$match': {
-                'sender_did': {
-                    '$exists': True
-                },
-                'recipient_did': {
-                    '$exists': True
-                },
-                'campaigns': {
-                    '$exists': True,
-                    '$ne': None
-                },
-                'user_id': {
-                    '$eq': None
-                }
-            }
-        }, {
-            '$unwind': '$campaigns'
-        }, {
-            '$addFields': {
-                'campaignObjectId': {
-                    '$toObjectId': '$campaigns'
-                }
-            }
-        }, {
-            '$group': {
-                '_id': '$campaignObjectId',
-                'totalReplies': {
-                    '$sum': 1
-                }
+                'created_by': current_user.id
             }
         }, {
             '$lookup': {
-                'from': 'sms campaign',
-                'localField': '_id',
-                'foreignField': '_id',
-                'as': 'campaign_details'
+                'from': 'messages',
+                'let': {
+                    'campaign_id': {
+                        '$toString': '$_id'
+                    },
+                    'sender_msisdn': '$sender_msisdn'
+                },
+                'pipeline': [
+                    {
+                        '$match': {
+                            '$expr': {
+                                '$and': [
+                                    {
+                                        '$in': [
+                                            '$$campaign_id', '$campaigns'
+                                        ]
+                                    }, {
+                                        '$eq': [
+                                            '$recipient_did', '$$sender_msisdn'
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    }, {
+                        '$group': {
+                            '_id': None,
+                            'totalReplies': {
+                                '$sum': 1
+                            }
+                        }
+                    }
+                ],
+                'as': 'replies_count'
             }
         }, {
-            '$unwind': '$campaign_details'
+            '$lookup': {
+                'from': 'messages',
+                'let': {
+                    'campaign_id': {
+                        '$toString': '$_id'
+                    }
+                },
+                'pipeline': [
+                    {
+                        '$match': {
+                            '$expr': {
+                                '$and': [
+                                    {
+                                        '$in': [
+                                            '$$campaign_id', '$campaigns'
+                                        ]
+                                    }, {
+                                        '$eq': [
+                                            '$user_id', current_user.id
+                                        ]
+                                    }
+                                ]
+                            }
+                        }
+                    }, {
+                        '$group': {
+                            '_id': None,
+                            'totalSent': {
+                                '$sum': 1
+                            }
+                        }
+                    }
+                ],
+                'as': 'sent_count'
+            }
         }, {
             '$match': {
-                'campaign_details.created_by': {
-                    '$eq': current_user.id
+                'replies_count': {
+                    '$ne': []
+                },
+                'sent_count': {
+                    '$ne': []
                 }
             }
         }, {
             '$project': {
                 '_id': 1,
-                'totalReplies': 1,
-                'name': '$campaign_details.name',
-                'message': '$campaign_details.message',
-                'sender_msisdn': '$campaign_details.sender_msisdn'
+                'name': 1,
+                'message': 1,
+                'sender_msisdn': 1,
+                'totalReplies': {
+                    '$arrayElemAt': [
+                        '$replies_count.totalReplies', 0
+                    ]
+                },
+                'totalSent': {
+                    '$arrayElemAt': [
+                        '$sent_count.totalSent', 0
+                    ]
+                }
             }
         }
     ]
 
-    campaigns_with_messages = await messages_collection.aggregate(pipeline).to_list(length=None)
+    # TODO: Disable updating of campaign sender_msisdn so that message retrieval is easier
+    campaigns_with_messages = await sms_campaign_collection.aggregate(pipeline).to_list(length=None)
     print(campaigns_with_messages)
 
     return campaigns_with_messages
@@ -553,20 +614,24 @@ async def reply_to_campaign_chat(campaign_id: PyObjectId, contact_phone: PhoneNu
 
     print("Message sent successfully.")
     message_id = sms_resp["messages"][0].get("message-id", None)
-    msg_insert_res = await messages_collection.insert_one({
+    valid_msg = Message(**{
+        "type": MessageType.sent,
         "message_id": message_id,
         "sender_did": campaign["sender_msisdn"],
         "recipient_did": contact_phone,
         "campaign_id": campaign_id,
         "message": reply_data.message,
-        "sent_at": to_pst(reply_data.sent_at),
-        "user_id": current_user.id,
+        "sent_at": reply_data.sent_at,
         "message_type": "text",
         "status": MessageStatus.unknown,
-        "campaigns": [campaign_id]
+        "campaigns": [campaign_id],
+        "users": [current_user.id]
     })
+    print(valid_msg.model_dump(exclude_unset=True))
+    msg_insert_res = await messages_collection.insert_one(valid_msg.model_dump(exclude_unset=True))
 
     message = await messages_collection.find_one({"_id": msg_insert_res.inserted_id})
+    print(message)
 
     if not message:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign chat not found or unauthorized")

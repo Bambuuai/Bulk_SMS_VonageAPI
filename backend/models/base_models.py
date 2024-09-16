@@ -1,17 +1,27 @@
+from datetime import datetime
 from enum import Enum
 from http import HTTPStatus
-from typing import Annotated, List
+from typing import Annotated, List, Dict, Any
 
 from fastapi import status
 from pydantic import BaseModel, BeforeValidator
 from pydantic_extra_types.country import CountryAlpha2
 from vonage_utils.types import PhoneNumber
 
+from utilities import pst_tz
+
 PyObjectId = Annotated[str, BeforeValidator(str)]
 
 
+class PSTConversionMixin:
+    @staticmethod
+    def convert_to_pst(value: datetime) -> datetime:
+        return value.astimezone(pst_tz)
+
+
 class BaseResponse(BaseModel):
-    message: str
+    message: str | None = ""
+    data: Dict[str, Any] | List[Any] | None = None
     success: bool
     status: HTTPStatus = status.HTTP_200_OK
 
@@ -48,3 +58,8 @@ class VonageNumber(BaseModel):
 
 class VonageNumberSearch(VonageNumber):
     cost: str | None
+
+
+class VonageNumberSearchResult(BaseModel):
+    count: int
+    numbers: List[VonageNumberSearch]

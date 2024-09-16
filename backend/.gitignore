@@ -7,6 +7,5 @@ __pycache__
 .former.env
 *.log
 private.key
-private2.key
 former.private.key
 *.state.*

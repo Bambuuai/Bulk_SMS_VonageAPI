@@ -1,9 +1,8 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from enum import Enum
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, ConfigDict, field_validator, field_serializer
-from pydantic_core.core_schema import ValidationInfo
+from pydantic import BaseModel, Field, ConfigDict, field_serializer
 from vonage_utils.types import PhoneNumber
 
 from models.base_models import PyObjectId
@@ -40,6 +39,11 @@ class BufferTime(int, Enum):
 
 
 class MessageType(str, Enum):
+    sent = "sent"
+    reply = "reply"
+
+
+class MessageTextType(str, Enum):
     text = "text"
     unicode = "unicode"
     binary = "binary"
@@ -54,8 +58,7 @@ class SMSCampaignForm(BaseModel):
     name: str
     contact_groups: List[str]  # Group names of contact groups
     message: str = Field(min_length=1)
-    schedule_now: bool | None = Field(default=False)
-    schedule_time: datetime | None = None  # In GMT time zone
+    # schedule_now: bool | None = Field(default=False)
     batch_size: BatchSize = Field(default=BatchSize.mini)
     buffer_time: BufferTime = Field(default=BufferTime.moderate)  # Minutes between batches
     throttle: ThrottleLevel = Field(default=ThrottleLevel.medium)
@@ -64,29 +67,29 @@ class SMSCampaignForm(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    @field_validator('schedule_time')
-    def check_schedule_time(cls, v: datetime | None, values: ValidationInfo):
-        # Get the current time
-        if not v:
-            return None
+    # @field_validator('schedule_time')
+    # def check_schedule_time(cls, v: datetime | None, values: ValidationInfo):
+    #     # Get the current time
+    #     if not v:
+    #         return None
+    #
+    #     v = v.replace(tzinfo=timezone.utc)
+    #     now = datetime.now(timezone.utc)
+    #
+    #     # Define the minimum valid time (5 minutes from now)
+    #     min_valid_time = now + timedelta(minutes=5)
+    #
+    #     # Check if the scheduled time is in the past or within 1 minute from now
+    #     if v < min_valid_time:
+    #         raise ValueError('Scheduled time must be at least 5 minutes in the future.')
+    #     else:
+    #         if values.data["schedule_now"]:
+    #             raise ValueError('You can either schedule now or in the future')
+    #     return v
 
-        v = v.replace(tzinfo=timezone.utc)
-        now = datetime.now(timezone.utc)
-
-        # Define the minimum valid time (5 minutes from now)
-        min_valid_time = now + timedelta(minutes=5)
-
-        # Check if the scheduled time is in the past or within 1 minute from now
-        if v < min_valid_time:
-            raise ValueError('Scheduled time must be at least 5 minutes in the future.')
-        else:
-            if values.data["schedule_now"]:
-                raise ValueError('You can either schedule now or in the future')
-        return v
-
-    @field_serializer('schedule_time')
-    def serialize_schedule_time(v: datetime):
-        return v.replace(tzinfo=timezone.utc) if v else v
+    # @field_serializer('schedule_time')
+    # def serialize_schedule_time(v: datetime):
+    #     return v.replace(tzinfo=timezone.utc) if v else v
 
     @field_serializer('batch_size')
     def serialize_batch_size(v: BatchSize):
@@ -102,9 +105,10 @@ class SMSCampaign(SMSCampaignForm):
 
 
 class SMSCampaignFromDB(SMSCampaign):
-    @field_validator('schedule_time')
-    def check_schedule_time(cls, v: datetime | None, values: ValidationInfo):
-        return v
+    pass
+    # @field_validator('schedule_time')
+    # def check_schedule_time(cls, v: datetime | None, values: ValidationInfo):
+    #     return v
 
 
 class SMSCampaignStatus(str, Enum):
@@ -125,6 +129,7 @@ class SMSCampaignQueue(BaseModel):
     created_at: datetime
     created_by: PyObjectId | None = None
     task_id: str | None = None
+    schedule_time: datetime
 
 
 class SMSCampaignQueueWithCampaign(SMSCampaignQueue):
@@ -146,16 +151,29 @@ class Reply(BaseModel):
 
 class Message(BaseModel):
     id: PyObjectId | None = Field(None, alias="_id")
-    message_id: str
+    message_id: str | None  # None id if message fails to send
     sender_did: PhoneNumber
     recipient_did: PhoneNumber
     message: str = Field(min_length=1)
     sent_at: datetime
-    user_id: PyObjectId | None  # User who sent the message
-    message_type: MessageType
+    type: MessageType  # User who sent the message
+    message_type: MessageTextType
     status: MessageStatus
     campaigns: List[PyObjectId] = []
+    users: List[PyObjectId] = []
+
     # keyword: str
+
+    # @field_validator('sent_at')
+    # @classmethod
+    # def validate_datetime(cls, value):
+    #     return cls.convert_to_pst(value)
+
+    class Config:
+        arbitrary_types_allowed = True
+        json_encoders = {
+            datetime: lambda v: v.astimezone(timezone.utc).isoformat()  # Convert to UTC
+        }
 
 
 class QueueStatusUpdate(BaseModel):
@@ -167,6 +185,7 @@ class CampaignWithMsg(BaseModel):
     id: PyObjectId | None = Field(None, alias="_id")
     name: str = Field(min_length=1)
     message: str = Field(min_length=1)
+    totalSent: int
     totalReplies: int
     sender_msisdn: PhoneNumber
 

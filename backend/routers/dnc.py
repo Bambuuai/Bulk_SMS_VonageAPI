@@ -5,6 +5,7 @@ import aiofiles
 import pandas as pd
 from bson import ObjectId
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile
+from pydantic import ValidationError
 from pymongo import UpdateOne
 from pymongo.errors import BulkWriteError
 from vonage_utils.types import PhoneNumber
@@ -13,8 +14,8 @@ from database import dnc_collection
 from models.auth_models import UserWithUUID, PyObjectId
 from models.base_models import BaseResponse, UpdateModelResponse, DeleteModelResponse
 from models.dnc_models import DNCEntry, BaseDNC, BaseDNCEditable
-from routers.auth import get_current_active_user
-from utilities import is_valid_phone_number, convert_to_string
+from utilities import is_valid_phone_number, convert_to_string, debug
+from .utilities import get_current_active_user, handlePhoneBulkWriteError
 
 router = APIRouter(prefix="/dnc", tags=["dnc"])
 
@@ -41,8 +42,8 @@ async def add_to_dnc(entries: list[BaseDNC],
     try:
         result = await dnc_collection.insert_many(entries_mod)
     except BulkWriteError as e:
-        # I can't output the full object because there is an ObjectId in the details
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.details["writeErrors"][0]["errmsg"])
+        debug(e, "=-=-=-=-=-=-=", e.details["writeErrors"][0]["errmsg"])
+        handlePhoneBulkWriteError(e)
 
     admin = await dnc_collection.find({"_id": {"$in": result.inserted_ids}}).to_list(len(result.inserted_ids))
     return admin
@@ -108,7 +109,7 @@ async def update_dnc(updates: list[BaseDNCEditable], phone_numbers: list[PhoneNu
 async def import_dnc_contacts(
         file: UploadFile,
         current_user: UserWithUUID = Depends(get_current_active_user)
-) -> UpdateModelResponse:
+) -> list[BaseDNC]:
     if not file.filename.endswith('.csv'):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail="Invalid file type. Please upload a CSV file.")
@@ -122,15 +123,15 @@ async def import_dnc_contacts(
     df = pd.read_csv(file.filename, dtype=str).fillna("")
 
     # Validate required columns
-    if 'phone_number' not in df.columns:
+    if 'NUMBER' not in df.columns:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail="CSV file must contain 'phone_number' column.")
+                            detail="CSV file must contain 'NUMBER' column.")
 
     # Prepare bulk operations
     # bulk_operations = []
     dncs = []
     for index, row in df.iterrows():
-        phone_number = row['phone_number']
+        phone_number = row['NUMBER']
         reason = row.get('reason', "")  # Use .get() to handle optional column
 
         if pd.notna(phone_number) and is_valid_phone_number(convert_to_string(phone_number)):
@@ -142,7 +143,15 @@ async def import_dnc_contacts(
             # debug(update_data)
             # debug("---------------------------------------------------------------")
 
-            dncs.append(BaseDNC(phone_number=phone_number, reason=reason))
+            try:
+                dncs.append(BaseDNC(phone_number=phone_number, reason=reason))
+            except ValidationError as e:
+                # Raise HTTPException with validation error details to the user
+                debug(row, "===================", e)
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail=f"Row {index + 1} is invalid"
+                )
 
             # bulk_operations.append(
             #     UpdateOne({'phone_number': convert_to_string(phone_number), 'created_by': current_user.id},

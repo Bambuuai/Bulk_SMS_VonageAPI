@@ -7,9 +7,9 @@ vonage_client = vonage.Client(key=VONAGE_API_KEY, secret=VONAGE_API_SECRET,
                               application_id=VONAGE_APPLICATION_ID,
                               private_key=VONAGE_APPLICATION_PRIVATE_KEY_PATH)
 
-msisdn = "12013816708"
+msisdn = "12012751634"  # 12013816708
 
-# print("BALANCE: ", vonage_client.account.get_balance())
+print("BALANCE: ", vonage_client.account.get_balance())
 # print(vonage_client.numbers.get_account_numbers())
 # print("============================================================================")
 # print("============================================================================")

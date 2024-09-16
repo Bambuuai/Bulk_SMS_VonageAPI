@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import Depends, APIRouter
 
 from models.auth_models import UserWithMSI
-from .auth import get_current_active_user
+from .utilities import get_current_active_user
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 

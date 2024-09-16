@@ -2,21 +2,20 @@
 import json
 import logging
 from datetime import datetime, timedelta, timezone
-from typing import Annotated, Union
+from typing import Annotated
 
 import jwt
 from bson import ObjectId
-from fastapi import Depends, APIRouter, HTTPException, status, Form
+from fastapi import APIRouter, HTTPException, status, Form
 # from fastapi.encoders import jsonable_encoder
-from fastapi.security import OAuth2PasswordBearer
-from jwt.exceptions import InvalidTokenError
-from passlib.context import CryptContext
 from pymongo.errors import DuplicateKeyError
 
 from database import user_collection
 from environment import SECRET_KEY, ALGORITHM
-from models.auth_models import UserCreate, Token, TokenData, LoginInfo, IdentityFields, DBUser, \
-    UserWithUUID, UserWithMSI, ResetPasswordRequest, ForgotPasswordRequest, BaseResponse, ForgotPasswordResponse
+from models.auth_models import UserCreate, Token, LoginInfo, IdentityFields, DBUser, \
+    UserWithUUID, ResetPasswordRequest, ForgotPasswordRequest, BaseResponse, ForgotPasswordResponse
+from routers.utilities import get_password_hash, create_token, get_user_with_password, authenticate_user, \
+    ACCESS_TOKEN_EXPIRE_DAYS
 from utilities import debug
 
 logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='a',
@@ -24,95 +23,7 @@ logging.basicConfig(level=logging.DEBUG, filename='app.log', filemode='a',
 
 # to get a string like this run:
 # openssl rand -hex 32
-
-ACCESS_TOKEN_EXPIRE_DAYS = 3
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/token")
-
 router = APIRouter(prefix="/auth", tags=["authentication"])
-
-
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password):
-    return pwd_context.hash(password)
-
-
-# Could bug out because if indirect referencing
-async def get_user_dict(field: IdentityFields, value: str):
-    if field == IdentityFields.id:
-        value = ObjectId(value)
-    debug("-------------------------", field.value, value)
-    user = await user_collection.find_one({field.value: value})
-
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return user
-
-
-async def get_user_with_password(field: IdentityFields, value: str):
-    user = await get_user_dict(field, value)
-    return DBUser(**user)
-
-
-async def get_user(field: IdentityFields, value: str) -> DBUser:
-    user = await get_user_dict(field, value)
-    return DBUser(**user)
-
-
-async def authenticate_user(email: str, password: str) -> Union[bool, UserWithMSI]:
-    user = await get_user_with_password(IdentityFields.email, email)
-
-    if not user:
-        return False
-    if user.disabled:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive user")
-    if not verify_password(password, user.hashed_password):
-        return False
-    return user
-
-
-def create_token(data: dict, expires_delta: timedelta | None = None):
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.now(timezone.utc) + expires_delta
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
-
-
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> DBUser:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
-        # debug("-------------------------------payload-------------------------------", json.dumps(payload))
-        if user_id is None:
-            raise credentials_exception
-        token_data = TokenData(id=user_id)
-    except InvalidTokenError:
-        raise credentials_exception
-    user = await get_user(IdentityFields.id, token_data.id)
-    if user is None:
-        raise credentials_exception
-    return user
-
-
-async def get_current_active_user(
-        current_user: Annotated[DBUser, Depends(get_current_user)],
-):
-    if current_user.disabled:
-        raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user
 
 
 @router.post("/register", response_model=UserWithUUID)

@@ -22,7 +22,7 @@ logger = logging.getLogger('utilities')
 logger.setLevel(logging.INFO)
 
 ACCEPTED_MSG_VARS = ['{name}', '{phone_number}']
-pst_tz = pytz.timezone('America/Los_Angeles')
+pst_tz = pytz.timezone('US/Pacific')
 
 
 def to_pst(utc_input):

@@ -1,4 +1,5 @@
 import signal
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -12,7 +13,7 @@ from pymongo import ReturnDocument
 from environment import RABBIT_USER, RABBIT_PASSWORD, RABBIT_VHOST, MONGODB_URL, MESSAGE_STATUS_URL, MESSAGE_REPLY_URL
 # from environment import WORKING_VONAGE_APPLICATION_ID, WORKING_VONAGE_APPLICATION_PRIVATE_KEY_PATH, \
 #     WORKING_VONAGE_API_KEY, WORKING_VONAGE_API_SECRET
-from models.sms_models import SMSCampaignStatus, SMSCampaignQueue, SMSCampaign, MessageStatus
+from models.sms_models import SMSCampaignStatus, SMSCampaignQueue, SMSCampaign, MessageStatus, MessageType
 from utilities import debug
 from vonage_api import vonage_client
 
@@ -37,9 +38,12 @@ celery.conf.update(
 )
 
 throttle_map = {
-    "low": 0.02,
-    "medium": 0.01,
-    "high": 0.007
+    # "low": 0.02,
+    # "medium": 0.01,
+    # "high": 0.007
+    "low": 1,
+    "medium": 2,
+    "high": 3
 }
 
 
@@ -173,7 +177,8 @@ def update_sms_task(status: SMSCampaignStatus, queue_id, retrieve=False):
 @celery.task(bind=True)
 def send_bulk_sms(self, queue_id, user_id):
     self.track_started = True
-    signal.signal(signal.SIGTERM, pause_handler)
+    if threading.current_thread() is threading.main_thread():
+        signal.signal(signal.SIGTERM, pause_handler)
     # Retrieve the queue entry
     queue_data = update_sms_task(SMSCampaignStatus.in_progress, queue_id, True)
     if not queue_data:
@@ -187,14 +192,16 @@ def send_bulk_sms(self, queue_id, user_id):
     campaign_data = mongo_campaign_collection.find_one({"_id": ObjectId(queue_entry.campaign_id)})
 
     campaign = SMSCampaign(**campaign_data)
-    debug("CAMPAIGN: ", campaign_data, "--==--", "USER: ", user_data)
+    debug("CAMPAIGN: ", campaign_data)
+    debug("--==--", "USER: ", user_data)
     campaign_contacts = list(mongo_contact_collection.find(
         {"created_by": user_id, "groups": {"$in": campaign.contact_groups}}
     ))
 
     # Fetch DNC contacts
     dnc_phone_numbers = mongo_dnc_collection.find(
-        {"created_by": {"$in": [user_id, user_data["created_by"]]}}
+        # TODO: remove admin because you will implement opt_out dnc_add with user_ids
+        {"created_by": {"$in": [user_id, user_data["created_by"], "admin"]}}
     ).distinct("phone_number")
 
     # Filter out DNC contacts
@@ -258,16 +265,17 @@ def send_bulk_sms(self, queue_id, user_id):
             message_id = response["messages"][0].get("message-id", None)
 
             message_info = {
+                "type": MessageType.sent,
                 "message_id": message_id,
                 "sender_did": sender_number,
                 "recipient_did": phone_number,
                 "campaign_id": campaign.id,
                 "message": personalized_message,
                 "sent_at": datetime.now(timezone.utc),
-                "user_id": user_id,
                 "message_type": message_type,
-                "status": MessageStatus.unknown,
-                "campaigns": [queue_entry.campaign_id]
+                "status": MessageStatus.unknown if message_id else MessageStatus.failed,
+                "campaigns": [queue_entry.campaign_id],
+                "users": [user_id]
             }
 
             debug(message_info, message_id)

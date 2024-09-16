@@ -2,10 +2,8 @@ from motor import motor_asyncio
 
 from environment import MONGODB_URL
 
-#  + "?retryWrites=true&w=majority&tlsCAFile=isrgrootx1.pem"
-
 client = motor_asyncio.AsyncIOMotorClient(MONGODB_URL)
-print("Connecting to DB: ", client, MONGODB_URL)
+# debug("Connecting to DB: ", client, MONGODB_URL)
 db = client.get_database("fastapi")
 user_collection = db.get_collection("users")
 dnc_collection = db.get_collection("dnc")

@@ -9,26 +9,17 @@ from pymongo.errors import DuplicateKeyError
 from database import user_collection
 from models.auth_models import UserWithUUID, UserCreate, DBUser, OptionalUserUpdates, UserWithMSI, VonageNumber, \
     VonageNumberWithUsers
-from models.base_models import BaseResponse, VonageNumberSearch, PyObjectId
+from models.base_models import BaseResponse, VonageNumberSearch, PyObjectId, VonageNumberSearchResult
 from utilities import validate_ids, debug, acquire_number
 from vonage_api import vonage_client
-from . import contact, profile
-from . import dnc
-from .auth import get_password_hash, get_current_active_user
-from .utilities import verify_users_created_by_same_admin
-
-
-def get_current_admin(current_user: Annotated[UserWithUUID, Depends(get_current_active_user)]) -> UserWithUUID:
-    if not current_user.is_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail="You do not have permission to access this resource.")
-    return current_user
-
+from . import contact, profile, admin_reports, dnc
+from .utilities import verify_users_created_by_same_admin, get_password_hash, get_current_admin
 
 router = APIRouter(prefix="/admin", tags=["admin"], dependencies=[Depends(get_current_admin)])
 router.include_router(profile.router)
 router.include_router(dnc.router)
 router.include_router(contact.router)
+router.include_router(admin_reports.router)
 CurrentAdminDependency = Depends(get_current_admin, use_cache=True)
 
 
@@ -216,14 +207,18 @@ async def get_numbers(
     return numbers_with_users
 
 
-@router.get("/numbers/search", response_model=List[VonageNumberSearch])
+@router.get("/numbers/search", response_model=VonageNumberSearchResult)
 async def search_numbers(
+        page: int = 1,
+        size: int = 10,
         current_admin: UserWithUUID = Depends(get_current_admin)
-) -> List[VonageNumberSearch]:
-    numbers = vonage_client.numbers.get_available_numbers('US', size=10, features=['SMS', 'MMS', 'VOICE'],
-                                                          type='mobile-lvn')
+) -> VonageNumberSearchResult:
+    print("PAGE: ", page, "SIZE: ", size)
+    numbers = vonage_client.numbers.get_available_numbers(country_code='US', size=size,
+                                                          features=['SMS', 'MMS', 'VOICE'],
+                                                          type='mobile-lvn', index=page)
     debug(numbers)
-    return numbers.get("numbers", [])
+    return numbers
 
 
 @router.post("/numbers/buy", response_model=BaseResponse)
@@ -243,20 +238,64 @@ async def buy_numbers(
 @router.post("/numbers/assign", response_model=BaseResponse)
 async def assign_numbers(
         number: VonageNumber = Body(),
-        users: List[PyObjectId] = Body(),
+        user: PyObjectId = Body(),
         current_admin: UserWithUUID = Depends(get_current_admin)
 ) -> BaseResponse:
-    user_ids = [ObjectId(uid) for uid in users]
+    user_id = ObjectId(user)
 
-    await user_collection.update_many(
-        {"_id": {"$in": user_ids}, "numbers.msisdn": {"$ne": number.msisdn}, "is_admin": False},
-        {"$addToSet": {"numbers": number.model_dump()}})
-
-    await user_collection.update_many(
-        {"_id": {"$nin": user_ids}, "numbers.msisdn": number.msisdn, "is_admin": False},
-        {"$pull": {"numbers": {"msisdn": number.msisdn}}}
+    # Step 1: Add the number to users who don't already have it
+    result = await user_collection.update_one(
+        {
+            "_id": user_id,  # Only for the selected users
+            "numbers.msisdn": {"$ne": number.msisdn},  # Ensure the number is not already assigned
+            "is_admin": False  # Only assign to non-admins
+        },
+        {"$addToSet": {"numbers": number.model_dump()}}  # Add the number to their numbers array
     )
 
-    return BaseResponse(status=status.HTTP_200_OK, message=f"Users assigned successfully", success=True)
+    # Step 2: Remove the number from users not in the list of users but who already have the number
+    await user_collection.update_one(
+        {
+            "numbers.msisdn": number.msisdn,  # Users who currently have the number
+            "_id": {"$ne": user_id},  # Users not in the selected list
+            "is_admin": False  # Only remove from non-admins
+        },
+        {"$pull": {"numbers": {"msisdn": number.msisdn}}}  # Remove the number from their numbers array
+    )
+
+    return BaseResponse(status=status.HTTP_200_OK, message="Users assigned successfully", success=True)
 
 # Implement checks for new "/numbers" endpoints
+
+
+# @router.post("/numbers/assign", response_model=BaseResponse)
+# async def assign_numbers(
+#         number: VonageNumber = Body(),
+#         users: List[PyObjectId] = Body(),
+#         current_admin: UserWithUUID = Depends(get_current_admin)
+# ) -> BaseResponse:
+#     user_ids = [ObjectId(uid) for uid in users]
+#
+#     # Step 1: Add the number to users who don't already have it
+#     result = await user_collection.update_many(
+#         {
+#             "_id": {"$in": user_ids},  # Only for the selected users
+#             "numbers.msisdn": {"$ne": number.msisdn},  # Ensure the number is not already assigned
+#             "is_admin": False  # Only assign to non-admins
+#         },
+#         {"$addToSet": {"numbers": number.model_dump()}}  # Add the number to their numbers array
+#     )
+#
+#     # Step 2: Remove the number from users not in the list of users but who already have the number
+#     await user_collection.update_many(
+#         {
+#             "numbers.msisdn": number.msisdn,  # Users who currently have the number
+#             "_id": {"$nin": user_ids},  # Users not in the selected list
+#             "is_admin": False  # Only remove from non-admins
+#         },
+#         {"$pull": {"numbers": {"msisdn": number.msisdn}}}  # Remove the number from their numbers array
+#     )
+#
+#     return BaseResponse(status=status.HTTP_200_OK, message="Users assigned successfully", success=True)
+#
+# # Implement checks for new "/numbers" endpoints

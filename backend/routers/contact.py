@@ -12,8 +12,8 @@ from database import contact_collection
 from models.auth_models import UserWithUUID
 from models.base_models import BaseResponse, UpdateModelResponse, PyObjectId
 from models.contact_models import ContactEntry, BaseContact, OptionalContactUpdates
-from routers.auth import get_current_active_user
 from utilities import debug
+from .utilities import get_current_active_user, handlePhoneBulkWriteError
 
 router = APIRouter(prefix="/contact", tags=["contact"])
 
@@ -49,8 +49,17 @@ async def add_contact(entries: list[BaseContact],
     try:
         result = await contact_collection.insert_many(entries_mod)
     except BulkWriteError as e:
+        errors = []
         # I can't output the full object because there is an ObjectId in the details
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=e.details["writeErrors"][0]["errmsg"])
+        debug(e, "=-=-=-=-=-=-=", e.details["writeErrors"][0]["errmsg"])
+        for error in e.details["writeErrors"]:
+            phone_number = error['keyValue']['phone_number']
+            custom_error = f"You already have a contact with phone number - {phone_number}"
+
+            # Add the custom error message to the list
+            errors.append(custom_error)
+        debug(errors)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=errors)
 
     added = await contact_collection.find({"_id": {"$in": result.inserted_ids}}).to_list(len(result.inserted_ids))
     return added
@@ -104,7 +113,11 @@ async def update_dnc(updates: list[OptionalContactUpdates],
         raise HTTPException(status_code=400, detail="No valid updates provided")
 
     # Execute bulk operations
-    result = await contact_collection.bulk_write(update_operations)
+    try:
+        result = await contact_collection.bulk_write(update_operations)
+    except BulkWriteError as e:
+        debug(e)
+        handlePhoneBulkWriteError(e)
 
     return UpdateModelResponse(matched=result.matched_count, modified=result.modified_count)
 
@@ -129,7 +142,7 @@ async def import_contacts(
     debug([row for row in df.iterrows()])
 
     # Validate required columns
-    required_columns = ['phone_number', 'name', 'notes']
+    required_columns = ['NUMBER', 'NAME', 'NOTES']
     missing_columns = [col for col in required_columns if col not in df.columns]
 
     if missing_columns:
@@ -142,10 +155,10 @@ async def import_contacts(
     bulk_operations = []
     new_contacts = []
     for index, row in df.iterrows():
-        row["groups"] = row["groups"].strip("'").split(",")
-        row["phone_number"] = row["phone_number"].strip("+")
+        row["groups"] = row["groups"].strip("'").lower().split(",")
+        row["NUMBER"] = row["NUMBER"].strip("+")
 
-        debug(row["phone_number"], type(row["phone_number"]))
+        debug(row["NUMBER"], type(row["NUMBER"]))
         debug(row)
         try:
             # Convert the row to a dictionary and validate using Pydantic
@@ -154,7 +167,7 @@ async def import_contacts(
             # Raise HTTPException with validation error details to the user
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail={f"Validation error(s) at row {index}": e.errors()}
+                detail=f"Row {index + 1} is invalid"
             )
 
             # debug("---------------------------------------------------------------")

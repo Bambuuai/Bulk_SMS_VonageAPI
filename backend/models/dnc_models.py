@@ -7,7 +7,7 @@ from vonage_utils.types import PhoneNumber
 from models.base_models import PyObjectId
 
 
-class DNCScope(Enum):
+class DNCScope(str, Enum):
     platform = "platform"
     user = "user"
 
