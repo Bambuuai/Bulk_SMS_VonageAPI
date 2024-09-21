@@ -4,6 +4,10 @@
     {
       "src": "main.py",
       "use": "@vercel/python"
+    },
+    {
+      "src": "api/**",
+      "use": "@vercel/static"
     }
   ],
   "routes": [
@@ -11,10 +15,5 @@
       "src": "/(.*)",
       "dest": "main.py"
     }
-  ],
-  "functions": {
-    "api/**": {
-      "excludeFiles": "{.next,*.cache,node_modules,public,app}/**"
-    }
-  }
+  ]
 }
