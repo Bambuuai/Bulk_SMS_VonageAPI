@@ -11,7 +11,6 @@ from utilities import make_optional_fields
 class BaseContact(BaseModel):
     name: str = Field(min_length=1)
     phone_number: PhoneNumber
-    notes: str
     groups: List[str] = Field(min_length=1, default=["default"])
 
 

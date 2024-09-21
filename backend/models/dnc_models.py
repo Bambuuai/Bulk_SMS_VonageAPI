@@ -12,17 +12,18 @@ class DNCScope(str, Enum):
     user = "user"
 
 
-class BaseDNCFixed(BaseModel):
-    phone_number: PhoneNumber | None
+# class BaseDNCFixed(BaseModel):
+#     phone_number: PhoneNumber | None
 
 
 class BaseDNCEditable(BaseModel):
-    reason: str = ""
+    name: str = Field(min_length=1, max_length=255)
+    phone_number: PhoneNumber | None
 
     model_config = ConfigDict(extra="forbid")
 
 
-class BaseDNC(BaseDNCFixed, BaseDNCEditable):
+class BaseDNC(BaseDNCEditable):
     pass
 
 

@@ -4,6 +4,7 @@ __pycache__
 
 .vscode
 .env
+*.env*
 .former.env
 *.log
 private.key

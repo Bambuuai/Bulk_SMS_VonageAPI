@@ -44,6 +44,10 @@ class UserAdminUpdates(UserBase):
     disabled: bool = False
 
 
+class UserUpdateFields(UserAdminUpdates):
+    password: str
+
+
 class User(UserAdminUpdates):
     created_at: datetime
     is_admin: bool = True  # Checks if the user is an admin of the account group, not the app admin
@@ -54,7 +58,7 @@ class UserWithUUID(User):
     created_by: PyObjectId | None = Field(default=None)
 
 
-OptionalUserUpdates = make_optional_fields(UserWithUUID, ConfigDict(extra="forbid"), "OptionalUserUpdates",
+OptionalUserUpdates = make_optional_fields(UserUpdateFields, ConfigDict(extra="forbid"), "OptionalUserUpdates",
                                            exclude=["created_at", "is_admin", "created_by", "id"])
 
 

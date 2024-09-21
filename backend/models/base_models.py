@@ -31,6 +31,7 @@ class UpdateModelResponse(BaseModel):
     added: int | None = None
     modified: int | None = None
     upserted: int | None = None
+    ids: List[PyObjectId] | None = None
 
 
 class DeleteModelResponse(BaseResponse):

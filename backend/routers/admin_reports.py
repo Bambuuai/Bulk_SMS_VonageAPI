@@ -146,6 +146,8 @@ async def get_contacts_dncs_summary(current_admin: Annotated[UserWithMSI, Depend
 
     results = await user_collection.aggregate(pipeline).to_list(length=None)
     debug(results)
+    if not len(results):
+        results = [{}]
 
     return {
         "total_contacts": results[0].get("total_contacts", 0),

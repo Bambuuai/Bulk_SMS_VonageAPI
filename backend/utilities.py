@@ -146,7 +146,6 @@ async def retrieve_contacts(
             "contacts": {"$push": {
                 "phone_number": "$phone_number",
                 "name": "$name",
-                "notes": "$notes",
                 "contact_id": "$_id"
             }}
         }},

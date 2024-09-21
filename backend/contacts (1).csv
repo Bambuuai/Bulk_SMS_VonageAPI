@@ -1,5 +1,5 @@
-name,phone_number,notes,groups
-John Doe,+12345678901,Client,'Group1'
-Jane Smith,+2347035991710,Supplier,'Group1'
-Alice Johnson,+2347035991711,Partner,'Group1'
-Bob Brown,+61234567890,Colleague,'Group1'
+NAME,NUMBER
+John Doe,+12345678901
+Jane Smith,+2347035991710
+Alice Johnson,+2347035991711
+Bob Brown,+61234567890

@@ -154,6 +154,9 @@ async def get_campaigns_queues_summary(
     #         }
     #     ]
     # }
+
+    if not len(results):
+        results = [{}]
     return BaseResponse(data=results[0], success=True)
 
 

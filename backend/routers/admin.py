@@ -102,22 +102,29 @@ async def update_users(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Some users were not found")
 
     # Check if the current admin is allowed to update these users
+    update_operations = []
     for user in users:
         if user.get("created_by") != current_admin.id:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
                                 detail="You do not have permission to update one or more of these users")
 
-    # Apply updates
-    update_data = [k.model_dump(exclude_unset=True) for k in user_updates]
-    debug(update_data, all(update_data))
-    if not update_data or not all(update_data):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No update fields provided")
+        # Prepare updates with password hashing if necessary
+        for index, user_update in enumerate(user_updates):
+            update_data = user_update.model_dump(exclude_unset=True)  # Get update fields
+            if not update_data:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No update fields provided")
 
-    # Create update operations
-    update_operations = [
-        UpdateOne({"_id": user_id, "created_by": current_admin.id}, {"$set": update_data[index]})
-        for index, user_id in enumerate(valid_user_ids)
-    ]
+            # Check if password is being updated and hash it
+            if "password" in update_data and bool(update_data["password"]):
+                if len(update_data["password"]) < 8:
+                    raise HTTPException(status_code=status.http.HTTP_BAD_REQUEST,
+                                        detail="Password must be at least 8 characters long")
+                update_data["hashed_password"] = get_password_hash(update_data["password"])
+
+            # Create update operation
+            update_operations.append(
+                UpdateOne({"_id": valid_user_ids[index], "created_by": current_admin.id}, {"$set": update_data})
+            )
 
     # Perform bulk update
     result = await user_collection.bulk_write(update_operations)
@@ -128,7 +135,7 @@ async def update_users(
     return {"modified": result.modified_count, "users": updated_users}
 
 
-@router.get("/numbers/", response_model=List[VonageNumberWithUsers])
+@router.get("/numbers", response_model=List[VonageNumberWithUsers])
 async def get_numbers(
         current_admin: UserWithUUID = Depends(get_current_admin)
 ) -> List[VonageNumberWithUsers]:

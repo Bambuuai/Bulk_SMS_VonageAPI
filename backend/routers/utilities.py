@@ -3,7 +3,7 @@ from typing import Annotated, Union
 
 import jwt
 from bson import ObjectId
-from fastapi import status, HTTPException, Depends
+from fastapi import status, HTTPException, Depends, WebSocketException
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
@@ -75,12 +75,16 @@ def create_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]) -> DBUser:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], is_websocket=False) -> DBUser:
+    if is_websocket:
+        credentials_exception = WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Not authenticated")
+    else:
+        credentials_exception = HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")

@@ -1,8 +1,10 @@
+import json
 from contextlib import asynccontextmanager
 from datetime import datetime
+from typing import List, Dict
 
 import uvicorn
-from fastapi import FastAPI, Request, Response, HTTPException, status
+from fastapi import FastAPI, Request, Response, HTTPException, status, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pymongo.errors import DuplicateKeyError, BulkWriteError
 from vonage_jwt.verify_jwt import verify_signature
@@ -10,12 +12,13 @@ from vonage_jwt.verify_jwt import verify_signature
 from database import user_collection, dnc_collection, contact_collection, sms_campaign_collection, messages_collection
 from environment import VONAGE_SIGNATURE_SECRET
 from models.auth_models import IdentityFields
-from models.base_models import BaseResponse
+from models.base_models import BaseResponse, PyObjectId
 from models.dnc_models import DNCEntry
 from models.sms_models import MessageStatus, MessageType
 from routers import admin
 from routers import auth, user, dnc, profile, campaign
-from utilities import debug, logger, verify_email_token, pst_tz
+from routers.utilities import get_current_user
+from utilities import debug, logger, verify_email_token
 
 tags = []
 
@@ -37,7 +40,7 @@ async def lifespan(fastapp: FastAPI):
     yield
 
 
-app = FastAPI(openapi_tags=tags, lifespan=lifespan)
+app = FastAPI(openapi_tags=tags, lifespan=lifespan, redirect_slashes=False)
 origins = [
     "http://localhost:3000",
     "https://localhost:3000",
@@ -55,9 +58,49 @@ app.include_router(dnc.router)
 app.include_router(campaign.router)
 
 
+@app.get("")
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
+
+
+# Store active connections
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[str, WebSocket] = {}
+
+    async def connect(self, websocket: WebSocket, user_id: PyObjectId):
+        await websocket.accept()
+        self.active_connections[user_id] = websocket
+
+    def disconnect(self, websocket: WebSocket, user_id: PyObjectId | None):
+        if user_id:
+            self.active_connections.pop(user_id, None)
+
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        await websocket.send_text(message)
+
+    async def broadcast(self, message: str, user_ids: List[str]):
+        for user_id in user_ids:
+            connection = self.active_connections.get(user_id)
+            if connection:
+                await connection.send_text(message)
+
+
+manager = ConnectionManager()
+
+
+@app.websocket("/stream/replies")  # {user_id}
+async def websocket_endpoint(websocket: WebSocket, token: str = ""):  # user_id: str
+    user = await get_current_user(token, True)
+    await manager.connect(websocket, user.id)
+    try:
+        while True:
+            data = await websocket.receive_text()  # This can receive a message from the client
+            debug(f"Received message from: {data}")
+    except WebSocketDisconnect:
+        manager.disconnect(websocket, user.id)
+        debug(f"User disconnected")
 
 
 @app.get("/activate/user/{token}", response_model=BaseResponse)
@@ -136,7 +179,7 @@ async def receive_replies(request: Request):
                     dnc_contact = DNCEntry(
                         phone_number=sender_msisdn,
                         reason="Opted out",
-                        added_at=datetime.now(pst_tz),
+                        added_at=datetime.utcnow(),
                         created_by=user_id,  # Use the campaign creator's user_id
                         scope="user"
                     )
@@ -181,7 +224,7 @@ async def receive_replies(request: Request):
 
             # Extract campaign IDs
             related_campaign_ids = [str(campaign["_id"]) for campaign in related_campaigns]
-            related_user_ids = [str(campaign["created_by"]) for campaign in related_campaigns]
+            related_user_ids = list({str(campaign["created_by"]) for campaign in related_campaigns})
 
         db_message = {
             "type": MessageType.reply,
@@ -197,8 +240,15 @@ async def receive_replies(request: Request):
             "users": related_user_ids
         }
 
-        results = await messages_collection.insert_one(db_message)
-        debug(db_message, results)
+        result = await messages_collection.insert_one(db_message)
+        if result.inserted_id:
+            ws_msg = db_message.copy()
+            ws_msg.pop("_id", None)
+            ws_msg["id"] = str(result.inserted_id)
+            ws_msg["sent_at"] = message_datetime.isoformat()
+            debug("WEBSOCKET MESSAGE: ", ws_msg)
+            await manager.broadcast(json.dumps(ws_msg), related_user_ids)
+        # debug(db_message, result)
 
         return Response(status_code=status.HTTP_200_OK)
     except Exception as error:
@@ -229,7 +279,7 @@ async def receive_replies(request: Request):
         sender_msisdn = message_data.get("msisdn")
 
         if message.lower() == "stop":
-            dnc_contact = DNCEntry(phone_number=sender_msisdn, reason="Opted out", added_at=datetime.now(pst_tz),
+            dnc_contact = DNCEntry(phone_number=sender_msisdn, reason="Opted out", added_at=datetime.utcnow(),
                                    created_by="admin", scope="user")
             add_dnc = await dnc_collection.insert_one(dnc_contact.model_dump(exclude_unset=True))
             debug(add_dnc.inserted_id)

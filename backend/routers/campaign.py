@@ -364,107 +364,79 @@ async def get_campaign_chats(
         current_user: Annotated[UserWithMSI, Depends(get_current_active_user)]) -> List[CampaignWithMsg]:
     pipeline = [
         {
-            '$match': {
-                'created_by': current_user.id
+            "$match": {
+                "created_by": current_user.id
             }
-        }, {
-            '$lookup': {
-                'from': 'messages',
-                'let': {
-                    'campaign_id': {
-                        '$toString': '$_id'
+        },
+        {
+            "$lookup": {
+                "from": "messages",
+                "let": {
+                    "campaign_id": {"$toString": "$_id"},
+                    "sender_msisdn": "$sender_msisdn"
+                },
+                "pipeline": [
+                    {
+                        "$match": {
+                            "$expr": {
+                                "$and": [
+                                    {"$in": ["$$campaign_id", "$campaigns"]},
+                                    {"$eq": ["$recipient_did", "$$sender_msisdn"]},
+                                    {"$eq": ["$type", "reply"]}
+                                ]
+                            }
+                        }
                     },
-                    'sender_msisdn': '$sender_msisdn'
-                },
-                'pipeline': [
                     {
-                        '$match': {
-                            '$expr': {
-                                '$and': [
-                                    {
-                                        '$in': [
-                                            '$$campaign_id', '$campaigns'
-                                        ]
-                                    }, {
-                                        '$eq': [
-                                            '$recipient_did', '$$sender_msisdn'
-                                        ]
-                                    }
-                                ]
-                            }
-                        }
-                    }, {
-                        '$group': {
-                            '_id': None,
-                            'totalReplies': {
-                                '$sum': 1
-                            }
+                        "$group": {
+                            "_id": None,
+                            "totalReplies": {"$sum": 1}
                         }
                     }
                 ],
-                'as': 'replies_count'
+                "as": "replies_count"
             }
-        }, {
-            '$lookup': {
-                'from': 'messages',
-                'let': {
-                    'campaign_id': {
-                        '$toString': '$_id'
-                    }
-                },
-                'pipeline': [
+        },
+        {
+            "$lookup": {
+                "from": "messages",
+                "let": {"campaign_id": {"$toString": "$_id"}},
+                "pipeline": [
                     {
-                        '$match': {
-                            '$expr': {
-                                '$and': [
-                                    {
-                                        '$in': [
-                                            '$$campaign_id', '$campaigns'
-                                        ]
-                                    }, {
-                                        '$eq': [
-                                            '$user_id', current_user.id
-                                        ]
-                                    }
+                        "$match": {
+                            "$expr": {
+                                "$and": [
+                                    {"$in": ["$$campaign_id", "$campaigns"]},
+                                    {"$not": {"$in": ["$status", ["failed", "expired", "rejected"]]}},
+                                    {"$eq": ["$type", "sent"]},
                                 ]
                             }
                         }
-                    }, {
-                        '$group': {
-                            '_id': None,
-                            'totalSent': {
-                                '$sum': 1
-                            }
+                    },
+                    {
+                        "$group": {
+                            "_id": None,
+                            "totalSent": {"$sum": 1}
                         }
                     }
                 ],
-                'as': 'sent_count'
+                "as": "sent_count"
             }
-        }, {
-            '$match': {
-                'replies_count': {
-                    '$ne': []
-                },
-                'sent_count': {
-                    '$ne': []
-                }
+        },
+        {
+            "$match": {
+                "replies_count": {"$ne": []},
+                "sent_count": {"$ne": []}
             }
-        }, {
-            '$project': {
-                '_id': 1,
-                'name': 1,
-                'message': 1,
-                'sender_msisdn': 1,
-                'totalReplies': {
-                    '$arrayElemAt': [
-                        '$replies_count.totalReplies', 0
-                    ]
-                },
-                'totalSent': {
-                    '$arrayElemAt': [
-                        '$sent_count.totalSent', 0
-                    ]
-                }
+        },
+        {
+            "$project": {
+                "_id": 1,
+                "name": 1,
+                "message": 1,
+                "sender_msisdn": 1,
+                "totalReplies": {"$arrayElemAt": ["$replies_count.totalReplies", 0]},
+                "totalSent": {"$arrayElemAt": ["$sent_count.totalSent", 0]}
             }
         }
     ]
@@ -488,16 +460,15 @@ async def get_chat_contacts(campaign_id: PyObjectId,
         {
             '$match': {
                 'campaigns': campaign_id,
-                'user_id': {
-                    '$ne': None
-                }
+                'users': current_user.id,
+                'type': 'sent'
             }
         }, {
             '$lookup': {
                 'from': 'messages',
                 'let': {
-                    'original_recipient': '$recipient_did',
-                    'original_sender': '$sender_did'
+                    'sent_recipient': '$recipient_did',
+                    'sent_sender': '$sender_did'
                 },
                 'pipeline': [
                     {
@@ -506,11 +477,19 @@ async def get_chat_contacts(campaign_id: PyObjectId,
                                 '$and': [
                                     {
                                         '$eq': [
-                                            '$sender_did', '$$original_recipient'
+                                            '$sender_did', '$$sent_recipient'
                                         ]
                                     }, {
                                         '$eq': [
-                                            '$recipient_did', '$$original_sender'
+                                            '$recipient_did', '$$sent_sender'
+                                        ]
+                                    }, {
+                                        '$eq': [
+                                            '$type', 'reply'
+                                        ]
+                                    }, {
+                                        '$in': [
+                                            campaign_id, '$campaigns'
                                         ]
                                     }
                                 ]
@@ -531,25 +510,23 @@ async def get_chat_contacts(campaign_id: PyObjectId,
                 '_id': {
                     'original_sender': '$sender_did',
                     'original_recipient': '$recipient_did'
+                },
+                'replyCount': {
+                    '$sum': 1
                 }
-            }
-        }, {
-            '$project': {
-                '_id': 0,
-                'original_sender': '$_id.original_sender',
-                'original_recipient': '$_id.original_recipient'
             }
         }, {
             '$lookup': {
                 'from': 'contact',
-                'localField': 'original_recipient',
+                'localField': '_id.original_recipient',
                 'foreignField': 'phone_number',
                 'as': 'contact_info'
             }
         }, {
             '$project': {
-                'original_sender': 1,
-                'original_recipient': 1,
+                '_id': 0,
+                'original_sender': '$_id.original_sender',
+                'original_recipient': '$_id.original_recipient',
                 'info': {
                     '$arrayElemAt': [
                         '$contact_info', 0
@@ -599,7 +576,7 @@ async def get_chat(campaign_id: PyObjectId, contact_phone: PhoneNumber,
 async def reply_to_campaign_chat(campaign_id: PyObjectId, contact_phone: PhoneNumber,
                                  current_user: Annotated[UserWithMSI, Depends(get_current_active_user)],
                                  reply_data: Annotated[Reply, Body()]) -> Message:
-    campaign = await sms_campaign_collection.find_one({'_id': ObjectId(campaign_id)})
+    campaign = await sms_campaign_collection.find_one({"_id": ObjectId(campaign_id), "created_by": current_user.id})
     sms_resp = vonage_client.sms.send_message({
         "from": campaign["sender_msisdn"],
         "to": contact_phone,
@@ -609,6 +586,7 @@ async def reply_to_campaign_chat(campaign_id: PyObjectId, contact_phone: PhoneNu
     })
 
     if not sms_resp["messages"][0]["status"] == "0":
+        debug(sms_resp, "--=============--", campaign)
         raise HTTPException(status_code=status.HTTP_412_PRECONDITION_FAILED,
                             detail="An error occurred while sending the message")
 
