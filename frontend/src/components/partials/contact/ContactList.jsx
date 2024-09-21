@@ -16,9 +16,10 @@ import {
 } from "react-table";
 import { selectableGroups } from "@/utils"
 import {formatToDisplay} from "@/utils";
+import Button from "@/components/ui/Button";
 
 
-const ContactList = ({ group, contacts, setContactEdit, deleteContact, deleting }) => {
+const ContactList = ({ group, className="", contacts, setContactEdit, deleteContact, deleting, headerslot={} }) => {
   const dispatch = useDispatch();
   const router = useRouter();
 
@@ -67,19 +68,19 @@ const ContactList = ({ group, contacts, setContactEdit, deleteContact, deleting 
         );
       },
     },
-    {
-      Header: "Notes",
-      accessor: "notes",
-      Cell: (row) => {
-        return (
-          <div className="flex space-x-3 items-center text-left rtl:space-x-reverse">
-            <div className="flex-1 font-medium text-sm leading-4 whitespace-nowrap">
-                {row?.cell?.value}
-            </div>
-          </div>
-        );
-      },
-    },
+    // {
+    //   Header: "Notes",
+    //   accessor: "notes",
+    //   Cell: (row) => {
+    //     return (
+    //       <div className="flex space-x-3 items-center text-left rtl:space-x-reverse">
+    //         <div className="flex-1 font-medium text-sm leading-4 whitespace-nowrap">
+    //             {row?.cell?.value}
+    //         </div>
+    //       </div>
+    //     );
+    //   },
+    // },
     {
       Header: "action",
       accessor: "action",
@@ -158,7 +159,7 @@ const ContactList = ({ group, contacts, setContactEdit, deleteContact, deleting 
   const { globalFilter, pageIndex, pageSize } = state;
   return (
     <>
-      <Card title={group} className="manage-list" noborder>
+      <Card title={group} className={"manage-list " + className} noborder headerslot={headerslot}>
         {/* <div className="md:flex justify-between items-center mb-6">
           <h4 className="card-title">Your Contacts</h4>
         </div> */}

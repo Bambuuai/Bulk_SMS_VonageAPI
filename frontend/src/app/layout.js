@@ -15,15 +15,17 @@ import { Inter } from "next/font/google";
 
 export const inter = Inter({ subsets: ["latin"] });
 
-// if (process.env.APP_ENVIRONMENT !== 'development') {
-  // console.log = function() {};
-// }
+console.log("ENV: ", process.env.NEXT_PUBLIC_APP_ENVIRONMENT)
+if (process.env.NEXT_PUBLIC_APP_ENVIRONMENT !== 'development') {
+  console.log = function() {};
+}
 
 export default function RootLayout({ children }) {
   return (
     <>
       <html lang="en" dir="ltr">
         <body className={`custom-tippy bulkage-app ${inter.className}`}>
+        <meta httpEquiv="Content-Security-Policy" content="upgrade-insecure-requests" />
           <Provider store={store}>
             <RouteValidator>
               <ToastContainer />

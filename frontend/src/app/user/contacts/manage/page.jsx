@@ -8,6 +8,7 @@ import notify from "@/app/notify";
 import EditContact from "@/components/partials/contact/EditContact";
 import axios from "@/configs/axios-config";
 import { USER_ENDPOINTS } from "@/constant/endpoints";
+import Button from "@/components/ui/Button";
 
 const ManageUsersPage = () => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -44,7 +45,18 @@ const ManageUsersPage = () => {
         setContacts(former => former.filter(contact => contact._id !== id));
         notify.success("Contact Deleted", {theme: "dark"});
       }
-    })
+    }).finally(() => setDeleting(former => former.filter(cid => cid !== id)))
+  }
+
+  function deleteGroup(name) {
+    console.log("Delete group", name)
+    setDeleting(former => [...former, name])
+    axios.delete(USER_ENDPOINTS.REMOVE_GROUP, {data: name}).then(({ data }) => {
+      if (data.success) {
+        setContacts(former => former.filter(contact => !contact.groups.includes(name)));
+        notify.success(`${name} Group Deleted`);
+      }
+    }).finally(() => setDeleting(former => former.filter(cid_name => cid_name !== name)))
   }
 
   useEffect(() => {
@@ -77,7 +89,7 @@ const ManageUsersPage = () => {
           <div className="space-y-12">
             {
               Object.keys(groups).sort().map((name,index ) => (
-                <ContactList key={index} group={name} contacts={groups[name]} setContactEdit={setContactEdit} deleteContact={deleteContact} deleting={deleting} />
+                <ContactList key={index} className={deleting.includes(name) ? "opacity-40 ease-in-out pointer-events-none pulse-custom" : ""} group={name} contacts={groups[name]} setContactEdit={setContactEdit} deleteContact={deleteContact} deleting={deleting} headerslot={<Button className="btn-outline-danger" text="Delete Group" icon="heroicons:trash" onClick={() => deleteGroup(name)} />} />
               ))
             }
           </div>

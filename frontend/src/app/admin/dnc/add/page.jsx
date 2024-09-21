@@ -18,16 +18,17 @@ import {formatToVonage, verifyNumbers} from "@/utils";
 
 // const schema = yup
 //   .object({
-//     reason: yup.string(),
+//     name: yup.string(),
 //     phone_number: yup.string().matches(/^[1-9]\d{8,14}$/, "Phone number is not valid").required("Phone number is required")
 //   }).required()
 
 const AddDNCs = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingFile, setLoadingFile] = useState(false);
+  const [fileImport, setFileImport] = useState([]);
   const { register, control, handleSubmit, reset, trigger, setError, formState: { errors } } = useForm({
     defaultValues: {
-        dnc: [{reason: "", phone_number: ""}]
+        dnc: [{name: "", phone_number: ""}]
     },
     // resolver: yupResolver(schema)
   });
@@ -35,6 +36,27 @@ const AddDNCs = () => {
     control,
     name: "dnc",
   });
+
+    function uploadFile(e) {
+        e.preventDefault();
+        console.log(fileImport)
+        setLoadingFile(true)
+        const formData = new FormData()
+        formData.append("file", fileImport[0])
+
+        axios.post(ADMIN_ENDPOINTS.IMPORT_DNC, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        }).then(({ data }) => {
+            if (data.added > 0 || data.upserted > 0) {
+                notify.success(`${data?.upserted + data?.added} DNCs imported successfully.`);
+                setFileImport([])
+            }
+        })
+            .catch(err => console.log(err))
+            .finally(() => setLoadingFile(false))
+    }
 
   function getInputs(file) {
     setLoadingFile(true)
@@ -94,12 +116,12 @@ const AddDNCs = () => {
             >
                 <div className="flex-1">
                     <InputGroup
-                        label="Reason"
+                        label="Name"
                         type="text"
-                        id={`reason-${index}`}
+                        id={`name-${index}`}
                         placeholder="Opt-out request"
                         register={register}
-                        name={`dnc[${index}].reason`}
+                        name={`dnc[${index}].name`}
                         disabled={isLoading}
                     />
                 </div>
@@ -139,9 +161,15 @@ const AddDNCs = () => {
       </Card>
 
       <div className="xl:col-span-2 col-span-1">
-        <Card title="File upload">
-          <DropZone loading={loadingFile} onFilesSelected={getInputs} />
-        </Card>
+          <Card title="File upload">
+              <DropZone loading={loadingFile} files={fileImport} onFilesSelected={setFileImport}/>
+              <div className="flex justify-end mt-4 space-x-4">
+                  <Button text="Clear File" className="btn-danger" onClick={() => setFileImport([])}
+                          disabled={!fileImport.length}/>
+                  <Button type="submit" text="Upload DNCs" className="btn-dark" isLoading={loadingFile}
+                          disabled={!fileImport.length}/>
+              </div>
+          </Card>
       </div>
     </div>
   );

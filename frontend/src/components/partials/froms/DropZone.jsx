@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import ProgressBar from "@/components/ui/ProgressBar";
+import Icon from "../../ui/Icon";
 
-const DropZone = ({ loading=False, onFilesSelected }) => {
-  const [files, setFiles] = useState([]);
+const DropZone = ({ loading=False, files, onFilesSelected }) => {
+  // const [files, setFiles] = useState([]);
   const { getRootProps, getInputProps, isDragAccept } = useDropzone({
     accept: {
       "text/csv": [".csv"],
@@ -15,15 +16,15 @@ const DropZone = ({ loading=False, onFilesSelected }) => {
           preview: URL.createObjectURL(file),
         })
       )
-      // setFiles(mappedFiles);
-      onFilesSelected(mappedFiles[0]);
+      onFilesSelected(mappedFiles);
+      // onFilesSelected(mappedFiles[0]);
     },
   });
   return (
     <div>
-      <div className="text-center rounded-md flex flex-col justify-center items-center cursor-pointer">
-        {!loading && (
-          <div {...getRootProps({ className: "dropzone w-full py-[52px] border-dashed border border-secondary-500" })}>
+      <div className="text-center rounded-md flex flex-col justify-center items-center">
+        {!loading && !files.length ? (
+          <div {...getRootProps({ className: "dropzone w-full py-[52px] border-dashed border border-secondary-500 cursor-pointer" })}>
             <input className="hidden" {...getInputProps()} />
             <img
               src="/assets/images/svg/upload.svg"
@@ -40,7 +41,7 @@ const DropZone = ({ loading=False, onFilesSelected }) => {
               </p>
             )}
           </div>
-        )}
+        ) : ""}
         <div className="w-full flex space-x-4">
           {
             loading ? (
@@ -56,20 +57,16 @@ const DropZone = ({ loading=False, onFilesSelected }) => {
               </div>
             ) : ""
           }
-          {/* {files.map((file, i) => (
-            <div key={i} className="mb-4 flex-none">
-              <div className="h-[300px] w-[300px] mx-auto mt-6 rounded-md">
-                <img
-                  src={file.preview}
-                  alt=""
-                  className=" object-contain h-full w-full block rounded-md"
-                  onLoad={() => {
-                    URL.revokeObjectURL(file.preview);
-                  }}
-                />
+          {!loading && files.map((file, i) => (
+            <div key={i} className="w-full mb-4 flex-none justify-center items-center">
+              <div className="mt-6 mb-4 rounded-md">
+                <div className="flex gap-4 justify-center items-center">
+                  <Icon icon="heroicons-solid:table-cells" width={24} />
+                  <p className="text-lg font-bold text-slate-500">{file.name}</p>
+                </div>
               </div>
             </div>
-          ))} */}
+          ))}
         </div>
       </div>
     </div>

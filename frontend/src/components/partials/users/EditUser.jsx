@@ -22,7 +22,7 @@ const EditUser = ({ userEdit, setUserEdit, updateLocalUser }) => {
       first_name: yup.string().default(userEdit.first_name),
       last_name: yup.string().default(userEdit.last_name),
       username: yup.string().default(userEdit.username),
-      password: yup.string().default(""),
+      password: yup.string().default("").min(8, "Password must be at least 8 characters"),
       disabled: yup.boolean().default(userEdit.disabled),
     })
     .required();
@@ -60,6 +60,7 @@ const EditUser = ({ userEdit, setUserEdit, updateLocalUser }) => {
           first_name: update.first_name.trim(),
           last_name: update.last_name.trim(),
           username: update.username.trim(),
+          password: update.password.trim(),
           disabled: isDisabled
         }
       ],
@@ -138,7 +139,7 @@ const EditUser = ({ userEdit, setUserEdit, updateLocalUser }) => {
             onChange={() => setShowPasswd(!showPasswd)}
           />
           <div className="flex gap-4">
-            <Button text="Change Password" type="submit" className="btn btn-dark text-center" isLoading={isLoading} />
+            {/*<Button text="Change Password" type="submit" className="btn btn-dark text-center" isLoading={isLoading} />*/}
             <Button text="Update" type="submit" className="btn btn-dark text-center" isLoading={isLoading} />
           </div>
         </div>

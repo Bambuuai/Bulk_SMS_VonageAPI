@@ -230,7 +230,8 @@ const CreateCampaignPage = () => {
               label="Message" 
               name="message" 
               placeholder="Do you want the best to eat? Click this link to learn more." 
-              row="3" 
+              row="3"
+              append={"Creation Sees"}
               error={errors.message}
               register={register} 
             />
