@@ -1,0 +1,219 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --toastify-toast-min-height: 60px;
+    --toastify-toast-width: 340px;
+  }
+  body {
+    @apply h-full overflow-x-hidden dark:text-slate-300 text-slate-600 font-normal;
+  }
+  .app-warp {
+    &.light,
+    &.skin--default {
+      @apply bg-slate-100;
+    }
+    &.lght,
+    &.skin--bordered {
+      @apply bg-transparent;
+    }
+    &.dark {
+      @apply bg-[#0f172a] text-slate-300;
+    }
+  }
+  html,
+  body {
+    @apply h-full;
+  }
+
+  .custom-toast {
+    @apply p-0 rounded-md bg-slate-100;
+  }
+
+  .custom-toast .Toastify__toast-body {
+    @apply p-0 m-0;
+  }
+
+  .custom-toast .alert.light-mode {
+    @apply bg-opacity-10
+  }
+
+  .custom-toast .alert-danger {
+    @apply bg-danger-500
+  }
+
+  .custom-toast .alert-success {
+    @apply bg-success-500
+  }
+
+  .custom-toast .alert-warning {
+    @apply bg-warning-500
+  }
+
+  .custom-toast .alert-info {
+    @apply bg-info-500
+  }
+
+  .bulkage-app-wrapper {
+    @apply relative;
+  }
+  .single-sidebar-menu .ReactCollapse--collapse {
+    transition: height 400ms;
+  }
+  .space-xy-5 {
+    > div,
+    > button,
+    > a,
+    label,
+    > * {
+      @apply mr-2 mb-2;
+    }
+  }
+  .space-xy-6 {
+    > div,
+    > button,
+    > a,
+    label,
+    > * {
+      @apply mr-4 mb-2;
+    }
+  }
+
+  .pulse-custom {
+    animation: customPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  .pulse-custom-2 {
+    animation: customPulse2 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  @keyframes customPulse {
+    0%, 100% {
+      opacity: 0.5;
+    }
+    50% {
+      opacity: .25;
+    }
+  }
+  @keyframes customPulse2 {
+    0%, 100% {
+      opacity: 0.65;
+    }
+    50% {
+      opacity: .35;
+    }
+  }
+
+  // .select__value-container--is-multi {
+  //   @apply gap-y-1.5
+  // }
+
+  html[dir="rtl"] {
+    .recharts-wrapper {
+      direction: rtl;
+    }
+    .recharts-yAxis {
+      .recharts-text {
+        text-anchor: start;
+      }
+    }
+  }
+  .bulkage-app {
+    .leaflet-control {
+      z-index: 0 !important;
+    }
+    .leaflet-control-container {
+      z-index: 555 !important;
+      position: relative;
+    }
+    .recharts-curve.recharts-tooltip-cursor {
+      display: none;
+    }
+    .recharts-wrapper.bar-chart {
+      .recharts-tooltip-cursor {
+        fill: transparent;
+      }
+    }
+    .recharts-tooltip-wrapper {
+      border: none !important;
+    }
+
+    // .recharts-cartesian-grid line,
+    // .recharts-polar-grid-angle line,
+    // .recharts-yAxis line,
+    // .recharts-xAxis line {
+    //   @apply stroke-black-200 dark:stroke-slate-700;
+    // }
+  }
+  /* HTML: <div class="loader"></div> */
+.activation-loader {
+  width: 65px;
+  aspect-ratio: 1;
+  position: relative;
+}
+.activation-loader > .before,
+.activation-loader > .after {
+  content: "";
+  position: absolute;
+  border-radius: 50px;
+  box-shadow: 0 0 0 3px inset #111;
+  animation: l5 2.5s infinite;
+}
+.activation-loader > .after {
+  animation-delay: -1.25s;
+  border-radius: 0;
+}
+@keyframes l5{
+  0%    {inset:0    35px 35px 0   }
+  12.5% {inset:0    35px 0    0   }
+  25%   {inset:35px 35px 0    0   }
+  37.5% {inset:35px 0    0    0   }
+  50%   {inset:35px 0    0    35px}
+  62.5% {inset:0    0    0    35px}
+  75%   {inset:0    0    35px 35px}
+  87.5% {inset:0    0    35px 0   }
+  100%  {inset:0    35px 35px 0   }
+}
+
+.full-content-height .simplebar-content {
+  height: 100%
+}
+.container-center {
+  padding-bottom: 80px;
+}
+.app-container:has(.container-center) {
+  position: absolute;
+  inset: 0;
+  padding: inherit;
+}
+}
+@layer components {
+  @import "components/table.scss";
+  @import "components/map.scss";
+  @import "components/progress";
+  @import "components/tippy";
+  @import "components/swiper";
+  @import "components/alert";
+  @import "components/card";
+  @import "components/auth";
+  @import "components/button";
+  @import "components/badge";
+  @import "components/typography";
+  @import "components/form";
+  @import "components/input-group";
+  @import "components/react-select";
+  @import "components/pagination";
+  @import "components/breadcrumbs";
+  @import "layout/header";
+  @import "layout/footer";
+  @import "layout/sidebar";
+  @import "layout/settings";
+  @import "utility/mix";
+  @import "utility/loading";
+  @import "utility/css-animation";
+  @import "utility/calander";
+  @import "utility/full-calender";
+  @import "components/print.scss";
+}
+@layer utilities {
+}
