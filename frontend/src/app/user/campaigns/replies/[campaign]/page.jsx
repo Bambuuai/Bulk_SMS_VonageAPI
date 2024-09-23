@@ -40,8 +40,7 @@ const ChatPage = ({ params }) => {
 	});
 
 	useEffect(() => {
-		const socket = new WebSocket(`wss://api.bulkage.net/stream/replies?token=${auth}`);
-
+		const socket = new WebSocket(`${process.env.NEXT_PUBLIC_WEBSOCKET_ROUTE}/stream/replies?token=${auth}`);
 		socket.onmessage = (event) => {
 			const newReply = event.data;
 			dispatch(sendMessage(JSON.parse(newReply)));
